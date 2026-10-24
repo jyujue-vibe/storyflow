@@ -7,6 +7,8 @@ import {
   BookOpenIcon,
   CopyIcon,
   EllipsisVerticalIcon,
+  EyeIcon,
+  EyeOffIcon,
   FilmIcon,
   MoonIcon,
   PlusIcon,
@@ -646,6 +648,7 @@ function AppShell() {
     RATIO_OPTIONS.find((option) => option.value === ratio)?.full ??
     "16:9 Landscape"
   const [apiKey, setApiKey] = useState("")
+  const [showKey, setShowKey] = useState(false)
   const [savedKey, setSavedKey] = useState<string | null>(() => loadSavedKey())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -671,7 +674,10 @@ function AppShell() {
   }, [generating])
 
   useEffect(() => {
-    if (settingsOpen && savedKey) setApiKey(savedKey)
+    if (settingsOpen) {
+      if (savedKey) setApiKey(savedKey)
+      setShowKey(false)
+    }
   }, [settingsOpen, savedKey])
 
   function copyPrompt(text: string, label: string) {
@@ -1490,7 +1496,7 @@ function AppShell() {
       </SidebarInset>
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Settings · Gemini API key</DialogTitle>
             <DialogDescription>
@@ -1502,14 +1508,25 @@ function AppShell() {
             <label htmlFor="gemini-key" className="text-sm font-medium">
               Gemini API key
             </label>
-            <Input
-              id="gemini-key"
-              type="password"
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-              placeholder="AIza…"
-              className="text-base"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="gemini-key"
+                type={showKey ? "text" : "password"}
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                placeholder="AIza…"
+                className="text-base flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0"
+                aria-label={showKey ? "Hide API key" : "Show API key"}
+                onClick={() => setShowKey((value) => !value)}
+              >
+                {showKey ? <EyeOffIcon /> : <EyeIcon />}
+              </Button>
+            </div>
           </div>
           <DialogFooter>
             {savedKey && (
