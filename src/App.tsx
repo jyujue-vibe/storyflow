@@ -114,6 +114,19 @@ const GENRE_OPTIONS = [
 // Genres shown as quick-pick buttons in the intro card.
 const INTRO_GENRES = ["romance", "kids", "animal", "superhero", "detective"]
 
+// Auto-filled idea text when a genre quick-pick is clicked.
+const INTRO_GENRE_PROMPTS: Record<string, string> = {
+  romance:
+    "Create a romantic love story about two people who meet by chance and slowly fall in love.",
+  kids: "Create a fun kids story about a curious little child who learns something new through a small adventure.",
+  animal:
+    "Create a heartwarming animal story about a brave little animal who helps its friends.",
+  superhero:
+    "Create an exciting superhero story about a young hero who discovers their power and saves the day.",
+  detective:
+    "Create a mysterious detective story where a clever detective solves a puzzling case with hidden clues.",
+}
+
 const STYLE_OPTIONS = [
   { value: "cinematic", label: "Cinematic 3D" },
   { value: "chubby", label: "Chubby · Style 23 & 1" },
@@ -1370,16 +1383,20 @@ function AppShell() {
                   ထည့်ရုံပဲ။
                 </EmptyDescription>
               </EmptyHeader>
-              <EmptyContent className="flex flex-wrap justify-center gap-2">
+              <EmptyContent className="flex flex-row flex-wrap justify-center gap-2">
                 {GENRE_OPTIONS.filter((option) =>
                   INTRO_GENRES.includes(option.value)
                 ).map((option) => (
                   <Button
                     key={option.value}
                     variant={genre === option.value ? "default" : "outline"}
-                    size="lg"
+                    size="sm"
+                    className="rounded-full"
                     aria-pressed={genre === option.value}
-                    onClick={() => setGenre(option.value)}
+                    onClick={() => {
+                      setGenre(option.value)
+                      setIdea(INTRO_GENRE_PROMPTS[option.value] ?? "")
+                    }}
                   >
                     {option.label}
                   </Button>
@@ -1406,7 +1423,7 @@ function AppShell() {
             </Alert>
             )}
 
-            <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+            <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
@@ -1563,7 +1580,7 @@ function AppShell() {
             </div>
             <div className="flex min-w-0 flex-col gap-6 lg:min-h-0 lg:overflow-y-auto">
             {generating && (
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+              <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
                 <CardContent>
                   <p className="animate-pulse text-center text-sm leading-relaxed">
                     {LOADING_PHRASES[loadingPhrase]}
