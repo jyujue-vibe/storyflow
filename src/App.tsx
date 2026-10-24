@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
 import { ThemeProvider, useTheme } from "next-themes"
 import { toast } from "sonner"
+
+import logoUrl from "./assets/storyflow-logo.svg"
 import {
   BookOpenIcon,
-  ClapperboardIcon,
   CopyIcon,
   EllipsisVerticalIcon,
   FilmIcon,
@@ -827,9 +828,11 @@ function AppShell() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg">
-                <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <ClapperboardIcon className="size-4" />
-                </span>
+                <img
+                  src={logoUrl}
+                  alt="StoryFlow logo"
+                  className="size-8 shrink-0"
+                />
                 <span className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-medium">StoryFlow</span>
                   <span className="truncate text-xs text-muted-foreground">
