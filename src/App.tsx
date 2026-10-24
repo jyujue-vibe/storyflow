@@ -625,6 +625,7 @@ function EpisodeView({
   busy,
   onCopy,
   onContinue,
+  hasNextEpisode,
   openSections,
   onOpenSectionsChange,
 }: {
@@ -632,6 +633,7 @@ function EpisodeView({
   busy: boolean
   onCopy: (text: string, label: string) => void
   onContinue: (episode: Episode) => void
+  hasNextEpisode: boolean
   openSections: string[]
   onOpenSectionsChange: (value: string[]) => void
 }) {
@@ -862,17 +864,19 @@ function EpisodeView({
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    size="lg"
-                    disabled={busy}
-                    onClick={() => onContinue(episode)}
-                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
-                  >
-                    Continue → Episode{" "}
-                    {String(episode.episodeNumber + 1).padStart(2, "0")}
-                  </Button>
-                </div>
+                {!hasNextEpisode && (
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button
+                      size="lg"
+                      disabled={busy}
+                      onClick={() => onContinue(episode)}
+                      className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                    >
+                      Continue → Episode{" "}
+                      {String(episode.episodeNumber + 1).padStart(2, "0")}
+                    </Button>
+                  </div>
+                )}
               </AccordionContent>
             </AccordionItem>
 
@@ -1117,6 +1121,7 @@ function AppShell() {
   >("idle")
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [signOutOpen, setSignOutOpen] = useState(false)
   const tokenClientRef = useRef<GoogleTokenClient | null>(null)
   const tokenRef = useRef<string | null>(null)
   const googleFlowRef = useRef<
@@ -1175,6 +1180,15 @@ function AppShell() {
   const activeThread = activeEpisode
     ? (threads.find((thread) => thread.id === activeEpisode.threadId) ?? null)
     : null
+  // Once the next episode exists, the current one must not offer Continue
+  // anymore — otherwise it would generate a duplicate next episode.
+  const activeHasNext = activeEpisode
+    ? episodes.some(
+        (e) =>
+          e.threadId === activeEpisode.threadId &&
+          e.episodeNumber === activeEpisode.episodeNumber + 1,
+      )
+    : false
   const deleteThread = threads.find((thread) => thread.id === deleteThreadId) ?? null
 
   // Keep refs fresh for the Google callbacks (the GIS token callback is
@@ -1769,7 +1783,11 @@ function AppShell() {
                 >
                   Sync now
                 </Button>
-                <Button variant="ghost" size="sm" onClick={signOutGoogle}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSignOutOpen(true)}
+                >
                   Sign out
                 </Button>
               </div>
@@ -2107,17 +2125,19 @@ function AppShell() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="lg"
-                      disabled={busy}
-                      onClick={() => handleContinue(activeEpisode)}
-                      className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
-                    >
-                      Continue → Episode{" "}
-                      {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
-                    </Button>
-                  </div>
+                  {!activeHasNext && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="lg"
+                        disabled={busy}
+                        onClick={() => handleContinue(activeEpisode)}
+                        className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                      >
+                        Continue → Episode{" "}
+                        {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <h2 className="text-lg font-medium">
                   (Episode{" "}
@@ -2222,6 +2242,7 @@ function AppShell() {
                 busy={busy}
                 onCopy={copyPrompt}
                 onContinue={handleContinue}
+                hasNextEpisode={activeHasNext}
                 openSections={openSections}
                 onOpenSectionsChange={setOpenSections}
               />
@@ -2396,6 +2417,32 @@ function AppShell() {
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={signOutOpen} onOpenChange={setSignOutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Are you sure you want to log out?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Your stories stay saved in your Google account and in this
+              browser. Syncing pauses until you sign in again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="lg">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              size="lg"
+              onClick={() => {
+                setSignOutOpen(false)
+                signOutGoogle()
+              }}
+            >
+              Log out
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
