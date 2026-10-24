@@ -182,18 +182,25 @@
   }
 }
 
-/* Thin scrollbars everywhere (both main panels included): 6px rounded thumb
-   in a muted theme color, transparent track. Firefox uses scrollbar-width. */
+/* Thin scrollbars everywhere (both main panels included): 4px rounded thumb
+   only — no up/down arrow buttons — in a muted theme color, transparent
+   track. Firefox uses scrollbar-width (thin is its slimmest, no arrows). */
 * {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent)
     transparent;
 }
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
+}
+*::-webkit-scrollbar-button {
+  display: none;
 }
 *::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-corner {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {

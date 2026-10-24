@@ -1258,7 +1258,7 @@ function AppShell() {
             <SidebarGroupLabel>My Stories</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
+                <SidebarMenuItem className="mb-2">
                   <SidebarMenuButton
                     isActive={activeEpisode === null}
                     onClick={() => { showEpisode(null); setShowGuide(false) }}
@@ -1420,7 +1420,7 @@ function AppShell() {
             )}
 
             <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-              <CardHeader>
+              <CardHeader className="px-4 sm:px-6">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <CardTitle>Create Episode</CardTitle>
@@ -1431,7 +1431,7 @@ function AppShell() {
                   <Badge variant="secondary">{totalDuration} seconds</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-col gap-6">
+              <CardContent className="flex flex-col gap-6 px-4 sm:px-6">
                 <Textarea
                   value={idea}
                   onChange={(event) => setIdea(event.target.value)}
@@ -1650,13 +1650,11 @@ function AppShell() {
                     </Button>
                   </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-medium">Episode output</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Generate လုပ်ထားတဲ့ episode အစစ်ပါ — prompt တစ်ခုချင်းစီကို Copy
-                    နှိပ်ပြီး Google Flow ထဲ ထည့်ပါ။
-                  </p>
-                </div>
+                <h2 className="text-lg font-medium">
+                  (Episode{" "}
+                  {String(activeEpisode.episodeNumber).padStart(2, "0")}){" "}
+                  {activeEpisode.title}
+                </h2>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
