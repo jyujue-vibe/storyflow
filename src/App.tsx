@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ThemeProvider, useTheme } from "next-themes"
 import { toast } from "sonner"
 
@@ -19,6 +19,12 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -148,7 +154,24 @@ function loadSavedEpisodes(): Episode[] {
     const raw = localStorage.getItem(EPISODES_STORAGE)
     if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as Episode[]) : []
+    if (!Array.isArray(parsed)) return []
+    // Legacy migration: episodes saved before threads existed have no
+    // threadId. Group them by story (Story Record title, else episode title)
+    // so one story's episodes become one thread.
+    const groups = new Map<string, string>()
+    let legacyCount = 0
+    return (parsed as Episode[]).map((episode) => {
+      if (episode.threadId) return episode
+      const key =
+        episode.storyRecord?.title || episode.title || "untitled story"
+      let threadId = groups.get(key)
+      if (!threadId) {
+        legacyCount += 1
+        threadId = `thread-legacy-${legacyCount}`
+        groups.set(key, threadId)
+      }
+      return { ...episode, threadId }
+    })
   } catch {
     return []
   }
@@ -206,6 +229,272 @@ function ThemeToggle() {
 const CARD_PADDING =
   "[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
 
+function SampleView({
+  sceneDuration,
+  onCopy,
+}: {
+  sceneDuration: number
+  onCopy: (text: string, label: string) => void
+}) {
+  const totalDuration = 10 * sceneDuration
+  return (
+    <section className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-lg font-medium">Episode output — နမူနာ</h2>
+        <p className="text-sm text-muted-foreground">
+          ဒါက UI နမူနာပါ — Generate လုပ်တဲ့အခါ ဒီနေရာမှာ တကယ့်
+          episode အပြည့်အစုံ ထွက်မယ်။ Scene 01 ရဲ့ prompt အစစ်ကို
+          အောက်မှာ ပြထားတယ်၊ ကျန် scene တွေရဲ့ စာသားတွေက
+          ဇာတ်လမ်းအကျဉ်းကနေ ထုတ်ထားတဲ့ နမူနာ arc ပါ။
+        </p>
+      </div>
+
+      <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+        <CardContent>
+          <Accordion multiple defaultValue={["details"]}>
+            <AccordionItem value="details">
+              <AccordionTrigger className="text-base">
+                ပျောက်သော ထမင်းဆီဆမ်း (Episode 01)
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm text-muted-foreground">
+                  Episode Title &amp; Details
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="secondary">မိသားစုဟာသ</Badge>
+                  <Badge variant="secondary">Cinematic 3D</Badge>
+                  <Badge variant="secondary">16:9 Landscape</Badge>
+                  <Badge variant="secondary">
+                    10 scenes × {sceneDuration}s = {totalDuration}s
+                  </Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="summary">
+              <AccordionTrigger className="text-base">
+                Story Summary
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm leading-relaxed">
+                  ရွာငယ်လေးက သစ်သားအိမ်မှာ ဒေါ်မြက မနက်ခင်းတိုင်း
+                  သားလေး ကျော်ကျော်အတွက် ထမင်းဆီဆမ်း ပြင်ပေးတယ်။
+                  တစ်နေ့မနက် စားပွဲပေါ်က ထမင်းဆီဆမ်း ပျောက်သွားတော့
+                  ဒေါ်မြက ကျော်ကျော်ကို သံသယဝင်မိတယ်။ ဒါပေမဲ့
+                  တရားခံအစစ်က အိမ်နောက်မှာ ထမင်းဆီဆမ်း ခိုးစားနေတဲ့
+                  ခွေးကလေး နီနီ ဖြစ်နေတယ်။ အမှန်သိသွားတော့ မိသားစု
+                  အားလုံး အတူတကွ ရယ်မောကြတယ်။
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="bible">
+              <AccordionTrigger className="text-base">
+                Character Bible
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <p className="text-sm font-medium">
+                      [CHAR_001] ဒေါ်မြ (Daw Mya) — 42 နှစ်, မိခင်
+                    </p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      ပါးမှာ သနပ်ခါးဝိုင်း၊ ဆံထုံးထုံး၊ အစိမ်းနုရောင်
+                      ဘလောက်စ်၊ အဆင်ပါသော ထမီ၊ နွေးထွေးသော မြန်မာမိခင်
+                      အသံ။
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      [CHAR_002] ကျော်ကျော် (Kyaw Kyaw) — 8 နှစ်, သား
+                    </p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      ဒေါ်မြ၏သား။
+                    </p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="sheet">
+              <AccordionTrigger className="text-base">
+                CHARACTER SHEET PROMPT — CHAR_001 Daw Mya
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Paste this into Flow&apos;s image tool first to get the
+                  reference sheet — 4 full-body views + 6 expressions —
+                  then use it as the character reference for the scene
+                  stills.
+                </p>
+                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                  {SHEET_PROMPT_DAW_MYA}
+                </pre>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    size="lg"
+                    onClick={() =>
+                      onCopy(SHEET_PROMPT_DAW_MYA, "CHARACTER SHEET — CHAR_001")
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Character Sheet Prompt
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="plan">
+              <AccordionTrigger className="text-base">
+                Scene Continuity Plan
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Location: သစ်သားအိမ် မီးဖိုဆောင် · မနက်ခင်း —
+                  တစ်ပိုင်းလုံး ဒီနေရာမှာပဲ။
+                </p>
+                <div className="flex flex-col gap-2">
+                  {SAMPLE_SCENES.map((line, index) => {
+                    const start = index * sceneDuration
+                    const end = start + sceneDuration
+                    return (
+                      <div key={line} className="flex gap-3 text-sm">
+                        <span className="shrink-0 text-muted-foreground">
+                          Scene {String(index + 1).padStart(2, "0")} ·{" "}
+                          {formatTime(start)}–{formatTime(end)}
+                        </span>
+                        <span className="leading-relaxed">{line}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="scene-01">
+              <AccordionTrigger className="text-base">
+                IMAGE PROMPT 01 — Opening close-up
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Copy this into Google Flow to generate the still, then use
+                  the video prompt on the same frame.
+                </p>
+                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                  {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+                </pre>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() =>
+                      onCopy(
+                        "16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                        "IMAGE PROMPT 01",
+                      )
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Image Prompt
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={() =>
+                      onCopy(
+                        `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
+                        "VIDEO PROMPT 01",
+                      )
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Video Prompt
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="continuity">
+              <AccordionTrigger className="text-base">
+                Continuity Note &amp; Next Episode Hook
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm leading-relaxed">
+                    Continuity: ဒေါ်မြ — အစိမ်းနုရောင် ဘလောက်စ်၊ အဆင်ပါသော
+                    ထမီ၊ သနပ်ခါးဝိုင်း၊ ဆံထုံး။ နေရာ — သစ်သားအိမ်
+                    မီးဖိုဆောင်။
+                  </p>
+                  <p className="text-sm leading-relaxed">
+                    Next Episode Hook (Episode 02, နမူနာ): ကျော်ကျော်နဲ့ နီနီ
+                    မနက်ခင်း စျေးသွားတဲ့ ခရီးမှာ အလွဲအသစ်တစ်ခု
+                    စောင့်နေသည်။
+                  </p>
+                </div>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    size="lg"
+                    onClick={() =>
+                      toast.info("Episode 2 continue is the next build step", {
+                        description:
+                          "Continue reuses the same characters, outfits and Story Record.",
+                      })
+                    }
+                  >
+                    Continue → Episode 02
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="record">
+              <AccordionTrigger className="text-base">
+                Story Record (ဇာတ်လမ်းမှတ်တမ်း)
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
+                  တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
+                </p>
+                <div className="flex flex-col gap-2 text-sm">
+                  <p>
+                    <span className="font-medium">Story Title: </span>
+                    ပျောက်သော ထမင်းဆီဆမ်း
+                  </p>
+                  <p>
+                    <span className="font-medium">Genre: </span>
+                    မိသားစုဟာသ
+                  </p>
+                  <p>
+                    <span className="font-medium">Central Premise: </span>
+                    မနက်ခင်း ထမင်းဆီဆမ်း ပျောက်ဆုံးမှု
+                  </p>
+                  <p>
+                    <span className="font-medium">Main Conflict: </span>
+                    မိခင်က သားကို သံသယဝင်သည် — တရားခံအစစ်က ခွေးကလေး
+                  </p>
+                  <p>
+                    <span className="font-medium">Key Turning Point: </span>
+                    အိမ်နောက်မှာ နီနီ ထမင်းဆီဆမ်း စားနေသည်ကို တွေ့သည်
+                  </p>
+                  <p>
+                    <span className="font-medium">Ending Type: </span>
+                    နွေးထွေးသော မိသားစု အဆုံး
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      <p className="text-sm text-muted-foreground">
+        Scene 02–10 ရဲ့ prompt တွေလည်း ဒီပုံစံအတိုင်းပဲ —
+        Generate လုပ်ပြီးမှ အပြည့်အစုံထွက်မယ်။
+      </p>
+    </section>
+  )
+}
+
 function EpisodeView({
   episode,
   busy,
@@ -221,6 +510,17 @@ function EpisodeView({
     const found = episode.characters.find((c) => c.id === charId)
     return found ? `${found.name} (${found.transliteration})` : charId
   }
+  const sectionIds = [
+    "details",
+    ...(episode.storySummary ? ["summary"] : []),
+    ...(episode.characters.length > 0 ? ["bible"] : []),
+    ...episode.sheetPrompts.map((sheet) => `sheet-${sheet.charId}`),
+    ...(episode.scenes.length > 0 ? ["plan"] : []),
+    ...episode.prompts.map((prompt) => `scene-${prompt.number}`),
+    "continuity",
+    "record",
+  ]
+  const [openSections, setOpenSections] = useState<string[]>(["details"])
   return (
     <section className="flex flex-col gap-6">
       <div>
@@ -231,254 +531,303 @@ function EpisodeView({
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => setOpenSections(sectionIds)}
+        >
+          အကုန်ဖွင့်
+        </Button>
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => setOpenSections([])}
+        >
+          အကုန်ပိတ်
+        </Button>
+      </div>
+
       <Card className={CARD_PADDING}>
-        <CardHeader>
-          <CardTitle>
-            {episode.title} (Episode {String(episode.episodeNumber).padStart(2, "0")})
-          </CardTitle>
-          <CardDescription>Episode Title &amp; Details</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {episode.genre && <Badge variant="secondary">{episode.genre}</Badge>}
-          {episode.visualStyle && (
-            <Badge variant="secondary">{episode.visualStyle}</Badge>
-          )}
-          <Badge variant="secondary">{episode.aspect}</Badge>
-          <Badge variant="secondary">
-            10 scenes × {episode.sceneDuration}s = {episode.totalSeconds}s
-          </Badge>
-        </CardContent>
-      </Card>
-
-      {episode.storySummary && (
-        <Card className={CARD_PADDING}>
-          <CardHeader>
-            <CardTitle className="text-base">Story Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed">{episode.storySummary}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {episode.characters.length > 0 && (
-        <Card className={CARD_PADDING}>
-          <CardHeader>
-            <CardTitle className="text-base">Character Bible</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {episode.characters.map((character) => (
-              <div key={character.id}>
-                <p className="text-sm font-medium">
-                  [{character.id}] {character.name} ({character.transliteration})
-                  {character.age !== null && ` — ${character.age} နှစ်`}
-                  {character.role && `, ${character.role}`}
+        <CardContent>
+          <Accordion
+            multiple
+            value={openSections}
+            onValueChange={setOpenSections}
+          >
+            <AccordionItem value="details">
+              <AccordionTrigger className="text-base">
+                {episode.title} (Episode{" "}
+                {String(episode.episodeNumber).padStart(2, "0")})
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm text-muted-foreground">
+                  Episode Title &amp; Details
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {episode.genre && (
+                    <Badge variant="secondary">{episode.genre}</Badge>
+                  )}
+                  {episode.visualStyle && (
+                    <Badge variant="secondary">{episode.visualStyle}</Badge>
+                  )}
+                  <Badge variant="secondary">{episode.aspect}</Badge>
+                  <Badge variant="secondary">
+                    10 scenes × {episode.sceneDuration}s ={" "}
+                    {episode.totalSeconds}s
+                  </Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {episode.storySummary && (
+              <AccordionItem value="summary">
+                <AccordionTrigger className="text-base">
+                  Story Summary
+                </AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-sm leading-relaxed">
+                    {episode.storySummary}
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {episode.characters.length > 0 && (
+              <AccordionItem value="bible">
+                <AccordionTrigger className="text-base">
+                  Character Bible
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-4">
+                    {episode.characters.map((character) => (
+                      <div key={character.id}>
+                        <p className="text-sm font-medium">
+                          [{character.id}] {character.name} (
+                          {character.transliteration})
+                          {character.age !== null && ` — ${character.age} နှစ်`}
+                          {character.role && `, ${character.role}`}
+                        </p>
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          {character.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {episode.sheetPrompts.map((sheet) => (
+              <AccordionItem key={sheet.charId} value={`sheet-${sheet.charId}`}>
+                <AccordionTrigger className="text-base">
+                  CHARACTER SHEET PROMPT — {sheet.charId}{" "}
+                  {charName(sheet.charId)}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Paste this into Flow&apos;s image tool first to get the
+                    reference sheet — 4 full-body views + 6 expressions —
+                    then use it as the character reference for the scene
+                    stills.
+                  </p>
+                  <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                    {sheet.text}
+                  </pre>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button
+                      size="lg"
+                      onClick={() =>
+                        onCopy(sheet.text, `CHARACTER SHEET — ${sheet.charId}`)
+                      }
+                    >
+                      <CopyIcon />
+                      Copy Character Sheet Prompt
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+
+            {episode.scenes.length > 0 && (
+              <AccordionItem value="plan">
+                <AccordionTrigger className="text-base">
+                  Scene Continuity Plan
+                </AccordionTrigger>
+                <AccordionContent>
+                  {episode.location && (
+                    <p className="text-sm text-muted-foreground">
+                      Location: {episode.location}
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    {episode.scenes.map((scene) => (
+                      <div key={scene.number} className="flex gap-3 text-sm">
+                        <span className="shrink-0 text-muted-foreground">
+                          Scene {String(scene.number).padStart(2, "0")} ·{" "}
+                          {formatTime(scene.start)}–{formatTime(scene.end)}
+                        </span>
+                        <span className="leading-relaxed">{scene.line}</span>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {episode.prompts.map((prompt) => (
+              <AccordionItem
+                key={prompt.number}
+                value={`scene-${prompt.number}`}
+              >
+                <AccordionTrigger className="text-base">
+                  Scene {String(prompt.number).padStart(2, "0")} ·{" "}
+                  {formatTime(prompt.start)}–{formatTime(prompt.end)}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Copy the image prompt into Google Flow to generate the
+                    still, then use the video prompt on the same frame.
+                  </p>
+                  <div className="flex flex-col gap-4">
+                    {prompt.image && (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium">
+                          IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
+                        </span>
+                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                          {prompt.image}
+                        </pre>
+                      </div>
+                    )}
+                    {prompt.video && (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium">
+                          VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
+                        </span>
+                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                          {prompt.video}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    {prompt.image && (
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() =>
+                          onCopy(
+                            prompt.image,
+                            `IMAGE PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                          )
+                        }
+                      >
+                        <CopyIcon />
+                        Copy Image Prompt
+                      </Button>
+                    )}
+                    {prompt.video && (
+                      <Button
+                        size="lg"
+                        onClick={() =>
+                          onCopy(
+                            prompt.video,
+                            `VIDEO PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                          )
+                        }
+                      >
+                        <CopyIcon />
+                        Copy Video Prompt
+                      </Button>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+
+            <AccordionItem value="continuity">
+              <AccordionTrigger className="text-base">
+                Continuity Note &amp; Next Episode Hook
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-2">
+                  {episode.continuityNote && (
+                    <p className="text-sm leading-relaxed">
+                      Continuity: {episode.continuityNote}
+                    </p>
+                  )}
+                  {episode.hook && (
+                    <p className="text-sm leading-relaxed">
+                      Next Episode Hook (Episode{" "}
+                      {String(episode.episodeNumber + 1).padStart(2, "0")}):{" "}
+                      {episode.hook}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    size="lg"
+                    disabled={busy}
+                    onClick={() => onContinue(episode)}
+                  >
+                    Continue → Episode{" "}
+                    {String(episode.episodeNumber + 1).padStart(2, "0")}
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="record">
+              <AccordionTrigger className="text-base">
+                Story Record (ဇာတ်လမ်းမှတ်တမ်း)
+              </AccordionTrigger>
+              <AccordionContent>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  {character.description}
+                  Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
+                  တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
                 </p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {episode.sheetPrompts.map((sheet) => (
-        <Card key={sheet.charId} className={CARD_PADDING}>
-          <CardHeader>
-            <CardTitle className="text-base">
-              CHARACTER SHEET PROMPT — {sheet.charId} {charName(sheet.charId)}
-            </CardTitle>
-            <CardDescription>
-              Paste this into Flow&apos;s image tool first to get the reference
-              sheet — 4 full-body views + 6 expressions — then use it as the
-              character reference for the scene stills.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-              {sheet.text}
-            </pre>
-          </CardContent>
-          <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              size="lg"
-              onClick={() =>
-                onCopy(sheet.text, `CHARACTER SHEET — ${sheet.charId}`)
-              }
-            >
-              <CopyIcon />
-              Copy Character Sheet Prompt
-            </Button>
-          </CardFooter>
-        </Card>
-      ))}
-
-      {episode.scenes.length > 0 && (
-        <Card className={CARD_PADDING}>
-          <CardHeader>
-            <CardTitle className="text-base">Scene Continuity Plan</CardTitle>
-            {episode.location && (
-              <CardDescription>Location: {episode.location}</CardDescription>
-            )}
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {episode.scenes.map((scene) => (
-              <div key={scene.number} className="flex gap-3 text-sm">
-                <span className="shrink-0 text-muted-foreground">
-                  Scene {String(scene.number).padStart(2, "0")} ·{" "}
-                  {formatTime(scene.start)}–{formatTime(scene.end)}
-                </span>
-                <span className="leading-relaxed">{scene.line}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {episode.prompts.map((prompt) => (
-        <Card key={prompt.number} className={CARD_PADDING}>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Scene {String(prompt.number).padStart(2, "0")} ·{" "}
-              {formatTime(prompt.start)}–{formatTime(prompt.end)}
-            </CardTitle>
-            <CardDescription>
-              Copy the image prompt into Google Flow to generate the still,
-              then use the video prompt on the same frame.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {prompt.image && (
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">
-                  IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
-                </span>
-                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                  {prompt.image}
-                </pre>
-              </div>
-            )}
-            {prompt.video && (
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">
-                  VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
-                </span>
-                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                  {prompt.video}
-                </pre>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            {prompt.image && (
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() =>
-                  onCopy(
-                    prompt.image,
-                    `IMAGE PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                  )
-                }
-              >
-                <CopyIcon />
-                Copy Image Prompt
-              </Button>
-            )}
-            {prompt.video && (
-              <Button
-                size="lg"
-                onClick={() =>
-                  onCopy(
-                    prompt.video,
-                    `VIDEO PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                  )
-                }
-              >
-                <CopyIcon />
-                Copy Video Prompt
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      ))}
-
-      <Card className={CARD_PADDING}>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Continuity Note &amp; Next Episode Hook
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {episode.continuityNote && (
-            <p className="text-sm leading-relaxed">
-              Continuity: {episode.continuityNote}
-            </p>
-          )}
-          {episode.hook && (
-            <p className="text-sm leading-relaxed">
-              Next Episode Hook (Episode{" "}
-              {String(episode.episodeNumber + 1).padStart(2, "0")}):{" "}
-              {episode.hook}
-            </p>
-          )}
-        </CardContent>
-        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button size="lg" disabled={busy} onClick={() => onContinue(episode)}>
-            Continue → Episode{" "}
-            {String(episode.episodeNumber + 1).padStart(2, "0")}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <Card className={CARD_PADDING}>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Story Record (ဇာတ်လမ်းမှတ်တမ်း)
-          </CardTitle>
-          <CardDescription>
-            Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series တစ်လျှောက်
-            ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          {episode.storyRecord.title && (
-            <p>
-              <span className="font-medium">Story Title: </span>
-              {episode.storyRecord.title}
-            </p>
-          )}
-          {episode.storyRecord.genre && (
-            <p>
-              <span className="font-medium">Genre: </span>
-              {episode.storyRecord.genre}
-            </p>
-          )}
-          {episode.storyRecord.premise && (
-            <p>
-              <span className="font-medium">Central Premise: </span>
-              {episode.storyRecord.premise}
-            </p>
-          )}
-          {episode.storyRecord.conflict && (
-            <p>
-              <span className="font-medium">Main Conflict: </span>
-              {episode.storyRecord.conflict}
-            </p>
-          )}
-          {episode.storyRecord.turningPoint && (
-            <p>
-              <span className="font-medium">Key Turning Point: </span>
-              {episode.storyRecord.turningPoint}
-            </p>
-          )}
-          {episode.storyRecord.endingType && (
-            <p>
-              <span className="font-medium">Ending Type: </span>
-              {episode.storyRecord.endingType}
-            </p>
-          )}
+                <div className="flex flex-col gap-2 text-sm">
+                  {episode.storyRecord.title && (
+                    <p>
+                      <span className="font-medium">Story Title: </span>
+                      {episode.storyRecord.title}
+                    </p>
+                  )}
+                  {episode.storyRecord.genre && (
+                    <p>
+                      <span className="font-medium">Genre: </span>
+                      {episode.storyRecord.genre}
+                    </p>
+                  )}
+                  {episode.storyRecord.premise && (
+                    <p>
+                      <span className="font-medium">Central Premise: </span>
+                      {episode.storyRecord.premise}
+                    </p>
+                  )}
+                  {episode.storyRecord.conflict && (
+                    <p>
+                      <span className="font-medium">Main Conflict: </span>
+                      {episode.storyRecord.conflict}
+                    </p>
+                  )}
+                  {episode.storyRecord.turningPoint && (
+                    <p>
+                      <span className="font-medium">Key Turning Point: </span>
+                      {episode.storyRecord.turningPoint}
+                    </p>
+                  )}
+                  {episode.storyRecord.endingType && (
+                    <p>
+                      <span className="font-medium">Ending Type: </span>
+                      {episode.storyRecord.endingType}
+                    </p>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
     </section>
@@ -652,6 +1001,7 @@ function AppShell() {
   const [savedKey, setSavedKey] = useState<string | null>(() => loadSavedKey())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null)
   const [episodes, setEpisodes] = useState<Episode[]>(() => loadSavedEpisodes())
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null)
   const [showGuide, setShowGuide] = useState(false)
@@ -663,6 +1013,38 @@ function AppShell() {
 
   const deleteSavedEpisode = episodes.find((e) => e.id === deleteTarget)
   const busy = generating
+
+  // Threads: one story = one thread, no matter how many episodes it has.
+  // Episodes keep their saved order (newest first); within a thread they
+  // sort by episode number for the Ep buttons.
+  const threads = useMemo(() => {
+    const order: string[] = []
+    const byId = new Map<string, Episode[]>()
+    for (const episode of episodes) {
+      const id = episode.threadId || "thread-legacy-0"
+      if (!byId.has(id)) {
+        byId.set(id, [])
+        order.push(id)
+      }
+      byId.get(id)!.push(episode)
+    }
+    return order.map((id) => {
+      const sorted = [...byId.get(id)!].sort(
+        (a, b) => a.episodeNumber - b.episodeNumber,
+      )
+      const first =
+        sorted.find((episode) => episode.episodeNumber === 1) ?? sorted[0]
+      return {
+        id,
+        title: first?.title || first?.storyRecord?.title || "Untitled story",
+        episodes: sorted,
+      }
+    })
+  }, [episodes])
+  const activeThread = activeEpisode
+    ? (threads.find((thread) => thread.id === activeEpisode.threadId) ?? null)
+    : null
+  const deleteThread = threads.find((thread) => thread.id === deleteThreadId) ?? null
 
   useEffect(() => {
     if (!generating) return
@@ -705,6 +1087,11 @@ function AppShell() {
     setParseIssues([])
   }
 
+  function showThread(thread: { episodes: Episode[] }) {
+    const latest = thread.episodes[thread.episodes.length - 1]
+    if (latest) showEpisode(latest)
+  }
+
   const effectiveGenre =
     genre === "custom"
       ? customGenre.trim()
@@ -743,6 +1130,7 @@ function AppShell() {
     userPrompt: string,
     duration: number,
     aspectLabel: string,
+    threadId: string,
   ) {
     if (!savedKey) {
       setSettingsOpen(true)
@@ -760,6 +1148,7 @@ function AppShell() {
       const text = await generateEpisodeText(savedKey, userPrompt)
       const { episode, issues } = parseEpisode(text, {
         sceneDuration: duration,
+        threadId,
       })
       if (!episode) {
         setRawFallback(text)
@@ -816,6 +1205,7 @@ function AppShell() {
       ),
       sceneDuration,
       ratioFull,
+      `thread-${Date.now()}`,
     )
   }
 
@@ -824,6 +1214,7 @@ function AppShell() {
       buildContinuePrompt(episode, sceneDuration, ratioFull),
       sceneDuration,
       ratioFull,
+      episode.threadId,
     )
   }
 
@@ -851,31 +1242,32 @@ function AppShell() {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>My Episodes</SidebarGroupLabel>
+            <SidebarGroupLabel>My Stories</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={activeEpisode === null}
                     onClick={() => { showEpisode(null); setShowGuide(false) }}
+                    className="bg-gradient-to-r from-[#7af1ff] via-[#3b82f6] to-[#0c098c] text-white hover:brightness-110"
                   >
                     <PlusIcon />
-                    <span>New Episode</span>
+                    <span>New story</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {episodes.map((episode) => (
-                  <SidebarMenuItem key={episode.id}>
+                {threads.map((thread) => (
+                  <SidebarMenuItem key={thread.id}>
                     <SidebarMenuButton
-                      isActive={activeEpisode?.id === episode.id}
-                      onClick={() => { showEpisode(episode); setShowGuide(false) }}
+                      isActive={activeThread?.id === thread.id}
+                      onClick={() => { showThread(thread); setShowGuide(false) }}
                     >
                       <FilmIcon />
-                      <span className="truncate">{episode.title}</span>
+                      <span className="truncate">{thread.title}</span>
                     </SidebarMenuButton>
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
-                          <SidebarMenuAction aria-label="Episode actions" />
+                          <SidebarMenuAction aria-label="Story actions" />
                         }
                       >
                         <EllipsisVerticalIcon />
@@ -891,10 +1283,10 @@ function AppShell() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           variant="destructive"
-                          onClick={() => setDeleteTarget(episode.id)}
+                          onClick={() => setDeleteThreadId(thread.id)}
                         >
                           <Trash2Icon />
-                          Delete
+                          Delete story
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -919,9 +1311,8 @@ function AppShell() {
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sm:px-6">
           <SidebarTrigger className="size-11" />
-          <Separator orientation="vertical" className="h-6" />
           <h1 className="truncate text-base font-medium sm:text-lg">
-            {showGuide ? "How to Use" : activeEpisode ? activeEpisode.title : "New Episode"}
+            {showGuide ? "How to Use" : activeEpisode ? activeEpisode.title : "New story"}
           </h1>
           <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
             {(activeEpisode
@@ -953,11 +1344,12 @@ function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8 xl:max-w-4xl">
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
           {showGuide ? (
             <GuideView />
           ) : (
-          <div className="flex flex-col gap-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
+            <div className="flex min-w-0 flex-col gap-8 lg:sticky lg:top-20 lg:self-start">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -1168,6 +1560,8 @@ function AppShell() {
               </Alert>
             )}
 
+            </div>
+            <div className="flex min-w-0 flex-col gap-6">
             {parseIssues.length > 0 && activeEpisode && (
               <Alert>
                 <TriangleAlertIcon />
@@ -1184,9 +1578,67 @@ function AppShell() {
               </Alert>
             )}
 
-            <div aria-hidden="true" className="py-4">
-              <Separator />
-            </div>
+            {activeEpisode && activeThread && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {activeThread.episodes.map((episode) => (
+                    <Button
+                      key={episode.id}
+                      variant={
+                        episode.id === activeEpisode.id ? "default" : "outline"
+                      }
+                      size="sm"
+                      className="rounded-full"
+                      aria-pressed={episode.id === activeEpisode.id}
+                      onClick={() => showEpisode(episode)}
+                    >
+                      Ep {String(episode.episodeNumber).padStart(2, "0")}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="lg"
+                    disabled={busy}
+                    onClick={() => handleContinue(activeEpisode)}
+                  >
+                    Continue → Episode{" "}
+                    {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-11"
+                          aria-label="Episode actions"
+                        />
+                      }
+                    >
+                      <EllipsisVerticalIcon />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          toast.success("Export coming in the next step")
+                        }
+                      >
+                        Export prompts
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setDeleteTarget(activeEpisode.id)}
+                      >
+                        <Trash2Icon />
+                        Delete episode
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            )}
 
             {rawFallback ? (
               <section className="flex flex-col gap-6">
@@ -1234,262 +1686,16 @@ function AppShell() {
               </section>
             ) : activeEpisode ? (
               <EpisodeView
+                key={activeEpisode.id}
                 episode={activeEpisode}
                 busy={busy}
                 onCopy={copyPrompt}
                 onContinue={handleContinue}
               />
             ) : (
-            <section className="flex flex-col gap-6">
-              <div>
-                <h2 className="text-lg font-medium">
-                  Episode output — နမူနာ
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  ဒါက UI နမူနာပါ — Generate လုပ်တဲ့အခါ ဒီနေရာမှာ တကယ့်
-                  episode အပြည့်အစုံ ထွက်မယ်။ Scene 01 ရဲ့ prompt အစစ်ကို
-                  အောက်မှာ ပြထားတယ်၊ ကျန် scene တွေရဲ့ စာသားတွေက
-                  ဇာတ်လမ်းအကျဉ်းကနေ ထုတ်ထားတဲ့ နမူနာ arc ပါ။
-                </p>
-              </div>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle>ပျောက်သော ထမင်းဆီဆမ်း (Episode 01)</CardTitle>
-                  <CardDescription>
-                    Episode Title &amp; Details
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">မိသားစုဟာသ</Badge>
-                  <Badge variant="secondary">Cinematic 3D</Badge>
-                  <Badge variant="secondary">16:9 Landscape</Badge>
-                  <Badge variant="secondary">
-                    10 scenes × {sceneDuration}s = {totalDuration}s
-                  </Badge>
-                </CardContent>
-              </Card>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle className="text-base">Story Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm leading-relaxed">
-                    ရွာငယ်လေးက သစ်သားအိမ်မှာ ဒေါ်မြက မနက်ခင်းတိုင်း
-                    သားလေး ကျော်ကျော်အတွက် ထမင်းဆီဆမ်း ပြင်ပေးတယ်။
-                    တစ်နေ့မနက် စားပွဲပေါ်က ထမင်းဆီဆမ်း ပျောက်သွားတော့
-                    ဒေါ်မြက ကျော်ကျော်ကို သံသယဝင်မိတယ်။ ဒါပေမဲ့
-                    တရားခံအစစ်က အိမ်နောက်မှာ ထမင်းဆီဆမ်း ခိုးစားနေတဲ့
-                    ခွေးကလေး နီနီ ဖြစ်နေတယ်။ အမှန်သိသွားတော့ မိသားစု
-                    အားလုံး အတူတကွ ရယ်မောကြတယ်။
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle className="text-base">Character Bible</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  <div>
-                    <p className="text-sm font-medium">
-                      [CHAR_001] ဒေါ်မြ (Daw Mya) — 42 နှစ်, မိခင်
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      ပါးမှာ သနပ်ခါးဝိုင်း၊ ဆံထုံးထုံး၊ အစိမ်းနုရောင်
-                      ဘလောက်စ်၊ အဆင်ပါသော ထမီ၊ နွေးထွေးသော မြန်မာမိခင်
-                      အသံ။
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">
-                      [CHAR_002] ကျော်ကျော် (Kyaw Kyaw) — 8 နှစ်, သား
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      ဒေါ်မြ၏သား။
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    CHARACTER SHEET PROMPT — CHAR_001 Daw Mya
-                  </CardTitle>
-                  <CardDescription>
-                    Paste this into Flow&apos;s image tool first to get the
-                    reference sheet — 4 full-body views + 6 expressions —
-                    then use it as the character reference for the scene
-                    stills.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                    {SHEET_PROMPT_DAW_MYA}
-                  </pre>
-                </CardContent>
-                <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    size="lg"
-                    onClick={() =>
-                      copyPrompt(SHEET_PROMPT_DAW_MYA, "CHARACTER SHEET — CHAR_001")
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Character Sheet Prompt
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Scene Continuity Plan
-                  </CardTitle>
-                  <CardDescription>
-                    Location: သစ်သားအိမ် မီးဖိုဆောင် · မနက်ခင်း —
-                    တစ်ပိုင်းလုံး ဒီနေရာမှာပဲ။
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                  {SAMPLE_SCENES.map((line, index) => {
-                    const start = index * sceneDuration
-                    const end = start + sceneDuration
-                    return (
-                      <div key={line} className="flex gap-3 text-sm">
-                        <span className="shrink-0 text-muted-foreground">
-                          Scene {String(index + 1).padStart(2, "0")} ·{" "}
-                          {formatTime(start)}–{formatTime(end)}
-                        </span>
-                        <span className="leading-relaxed">{line}</span>
-                      </div>
-                    )
-                  })}
-                </CardContent>
-              </Card>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    IMAGE PROMPT 01 — Opening close-up
-                  </CardTitle>
-                  <CardDescription>
-                    Copy this into Google Flow to generate the still, then use
-                    the video prompt on the same frame.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                    {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
-                  </pre>
-                </CardContent>
-                <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() =>
-                      copyPrompt(
-                        "16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
-                        "IMAGE PROMPT 01",
-                      )
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Image Prompt
-                  </Button>
-                  <Button
-                    size="lg"
-                    onClick={() =>
-                      copyPrompt(
-                        `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
-                        "VIDEO PROMPT 01",
-                      )
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Video Prompt
-                  </Button>
-                </CardFooter>
-              </Card>
-              <p className="text-sm text-muted-foreground">
-                Scene 02–10 ရဲ့ prompt တွေလည်း ဒီပုံစံအတိုင်းပဲ —
-                Generate လုပ်ပြီးမှ အပြည့်အစုံထွက်မယ်။
-              </p>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Continuity Note &amp; Next Episode Hook
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                  <p className="text-sm leading-relaxed">
-                    Continuity: ဒေါ်မြ — အစိမ်းနုရောင် ဘလောက်စ်၊ အဆင်ပါသော
-                    ထမီ၊ သနပ်ခါးဝိုင်း၊ ဆံထုံး။ နေရာ — သစ်သားအိမ်
-                    မီးဖိုဆောင်။
-                  </p>
-                  <p className="text-sm leading-relaxed">
-                    Next Episode Hook (Episode 02, နမူနာ): ကျော်ကျော်နဲ့ နီနီ
-                    မနက်ခင်း စျေးသွားတဲ့ ခရီးမှာ အလွဲအသစ်တစ်ခု
-                    စောင့်နေသည်။
-                  </p>
-                </CardContent>
-                <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    size="lg"
-                    onClick={() =>
-                      toast.info("Episode 2 continue is the next build step", {
-                        description:
-                          "Continue reuses the same characters, outfits and Story Record.",
-                      })
-                    }
-                  >
-                    Continue → Episode 02
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Story Record (ဇာတ်လမ်းမှတ်တမ်း)
-                  </CardTitle>
-                  <CardDescription>
-                    Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
-                    တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2 text-sm">
-                  <p>
-                    <span className="font-medium">Story Title: </span>
-                    ပျောက်သော ထမင်းဆီဆမ်း
-                  </p>
-                  <p>
-                    <span className="font-medium">Genre: </span>
-                    မိသားစုဟာသ
-                  </p>
-                  <p>
-                    <span className="font-medium">Central Premise: </span>
-                    မနက်ခင်း ထမင်းဆီဆမ်း ပျောက်ဆုံးမှု
-                  </p>
-                  <p>
-                    <span className="font-medium">Main Conflict: </span>
-                    မိခင်က သားကို သံသယဝင်သည် — တရားခံအစစ်က ခွေးကလေး
-                  </p>
-                  <p>
-                    <span className="font-medium">Key Turning Point: </span>
-                    အိမ်နောက်မှာ နီနီ ထမင်းဆီဆမ်း စားနေသည်ကို တွေ့သည်
-                  </p>
-                  <p>
-                    <span className="font-medium">Ending Type: </span>
-                    နွေးထွေးသော မိသားစု အဆုံး
-                  </p>
-                </CardContent>
-              </Card>
-            </section>
+            <SampleView sceneDuration={sceneDuration} onCopy={copyPrompt} />
             )}
+            </div>
           </div>
           )}
         </main>
@@ -1596,15 +1802,60 @@ function AppShell() {
               size="lg"
               onClick={() => {
                 if (deleteSavedEpisode) {
-                  persistEpisodes(
-                    episodes.filter((e) => e.id !== deleteSavedEpisode.id),
+                  const remaining = episodes.filter(
+                    (e) => e.id !== deleteSavedEpisode.id,
                   )
+                  persistEpisodes(remaining)
                   if (activeEpisode?.id === deleteSavedEpisode.id) {
-                    setActiveEpisode(null)
+                    const siblings = remaining
+                      .filter(
+                        (e) => e.threadId === deleteSavedEpisode.threadId,
+                      )
+                      .sort((a, b) => a.episodeNumber - b.episodeNumber)
+                    setActiveEpisode(siblings[siblings.length - 1] ?? null)
                   }
                 }
                 setDeleteTarget(null)
                 toast.success("Episode deleted")
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteThreadId !== null}
+        onOpenChange={(open: boolean) => {
+          if (!open) setDeleteThreadId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Story ကို ဖျက်မှာလား?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteThread
+                ? `“${deleteThread.title}” နဲ့ သူ့ရဲ့ episode အားလုံး အပြီးဖျက်သွားမယ်။ ဒါကို ပြန်မရနိုင်ဘူး။`
+                : "ဒီ story နဲ့ သူ့ရဲ့ episode အားလုံးကို အပြီးဖျက်သွားမယ်။ ပြန်မရနိုင်ဘူး။"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="lg">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              size="lg"
+              onClick={() => {
+                if (deleteThread) {
+                  persistEpisodes(
+                    episodes.filter((e) => e.threadId !== deleteThread.id),
+                  )
+                  if (activeEpisode?.threadId === deleteThread.id) {
+                    setActiveEpisode(null)
+                  }
+                }
+                setDeleteThreadId(null)
+                toast.success("Story deleted")
               }}
             >
               Delete
