@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import logoUrl from "./assets/storyflow-logo.svg"
 import {
   BookOpenIcon,
+  ClapperboardIcon,
   CopyIcon,
   DownloadIcon,
   EllipsisVerticalIcon,
@@ -410,6 +411,8 @@ function SampleView({
   const totalDuration = 10 * sceneDuration
   return (
     <section className="flex flex-col gap-6">
+      <Separator className="my-2" />
+      <ClapperboardIcon className="size-5 text-muted-foreground" />
       <div>
         <h2 className="text-lg font-medium">Episode output — နမူနာ</h2>
         <p className="text-sm text-muted-foreground">
