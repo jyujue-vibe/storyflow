@@ -1682,19 +1682,23 @@ function AppShell() {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={activeEpisode === null}
+                  onClick={() => { showEpisode(null); setShowGuide(false) }}
+                  className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                >
+                  <PlusIcon />
+                  <span>New story</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+          <SidebarGroup>
             <SidebarGroupLabel>My Stories</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem className="mb-2">
-                  <SidebarMenuButton
-                    isActive={activeEpisode === null}
-                    onClick={() => { showEpisode(null); setShowGuide(false) }}
-                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
-                  >
-                    <PlusIcon />
-                    <span>New story</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
                 {threads.map((thread) => (
                   <SidebarMenuItem key={thread.id}>
                     <SidebarMenuButton
