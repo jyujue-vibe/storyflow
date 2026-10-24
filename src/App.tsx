@@ -1239,12 +1239,16 @@ function AppShell() {
     const client = tokenClientRef.current
     if (!client) return
     googleFlowRef.current = flow
+    // Silent flows (restore on load, retry after expiry) must use
+    // prompt: "none" — a hidden iframe, no popup at all. An empty prompt
+    // was treated as "show UI as needed", which popped the Google login
+    // window on every page refresh.
     client.requestAccessToken(
       flow === "signin"
         ? undefined
         : flow === "consent"
           ? { prompt: "consent" }
-          : { prompt: "" },
+          : { prompt: "none" },
     )
   }
 
