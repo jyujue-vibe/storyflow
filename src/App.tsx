@@ -894,21 +894,6 @@ function AppShell() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={showGuide}
-                    onClick={() => setShowGuide(true)}
-                  >
-                    <BookOpenIcon />
-                    <span>How to Use</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
@@ -929,14 +914,23 @@ function AppShell() {
           <h1 className="truncate text-base font-medium sm:text-lg">
             {showGuide ? "How to Use" : activeEpisode ? activeEpisode.title : "New Episode"}
           </h1>
+          <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
+            {(activeEpisode
+              ? activeEpisode.aspect.split(" ")[0]
+              : ratio)}{" "}
+            · 10 scenes ×{" "}
+            {activeEpisode ? activeEpisode.sceneDuration : sceneDuration}s
+          </Badge>
           <div className="ml-auto flex items-center gap-2">
-            <Badge variant="secondary" className="hidden sm:inline-flex">
-              {(activeEpisode
-                ? activeEpisode.aspect.split(" ")[0]
-                : ratio)}{" "}
-              · 10 scenes ×{" "}
-              {activeEpisode ? activeEpisode.sceneDuration : sceneDuration}s
-            </Badge>
+            <Button
+              variant={showGuide ? "default" : "outline"}
+              aria-label="How to Use"
+              className="h-11"
+              onClick={() => setShowGuide(true)}
+            >
+              <BookOpenIcon />
+              <span className="hidden md:inline">How to Use</span>
+            </Button>
             <ThemeToggle />
             <Button
               variant="outline"
@@ -1180,6 +1174,10 @@ function AppShell() {
                 </AlertDescription>
               </Alert>
             )}
+
+            <div aria-hidden="true" className="py-4">
+              <Separator />
+            </div>
 
             {rawFallback ? (
               <section className="flex flex-col gap-6">
