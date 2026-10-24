@@ -6,6 +6,7 @@ import logoUrl from "./assets/storyflow-logo.svg"
 import {
   BookOpenIcon,
   CopyIcon,
+  DownloadIcon,
   EllipsisVerticalIcon,
   EyeIcon,
   EyeOffIcon,
@@ -1708,6 +1709,7 @@ function AppShell() {
                             toast.success("Export coming in the next step")
                           }
                         >
+                          <DownloadIcon />
                           Export prompts
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -1790,14 +1792,6 @@ function AppShell() {
               ) : null}
             </div>
           )}
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => setSettingsOpen(true)}>
-                <SettingsIcon />
-                <span>Settings · API key</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
 
@@ -2097,6 +2091,7 @@ function AppShell() {
                                 toast.success("Export coming in the next step")
                               }
                             >
+                              <DownloadIcon />
                               Export prompts
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
