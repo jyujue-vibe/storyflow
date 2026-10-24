@@ -167,6 +167,9 @@ const GOOGLE_CLIENT_ID =
 const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/drive.appdata openid email profile"
 const GOOGLE_SIGNED_IN_STORAGE = "mm3d.googleSignedIn"
+// Shown when Google granted sign-in but not Drive access.
+const SCOPE_ERROR_MESSAGE =
+  "Drive access မပေးလို့ sync မရဘူး — Sync now နှိပ်ပြီး Google screen မှာ Drive ကို Allow ပေးပါ"
 
 interface GoogleTokenClient {
   requestAccessToken: (options?: { prompt?: string }) => void
@@ -1112,9 +1115,13 @@ function AppShell() {
     "idle" | "syncing" | "synced" | "error"
   >("idle")
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const tokenClientRef = useRef<GoogleTokenClient | null>(null)
   const tokenRef = useRef<string | null>(null)
-  const googleFlowRef = useRef<"signin" | "restore" | "retry" | null>(null)
+  const googleFlowRef = useRef<
+    "signin" | "restore" | "retry" | "consent" | null
+  >(null)
+  const consentRequestedRef = useRef(false)
   const syncingRef = useRef(false)
   const syncPendingRef = useRef(false)
   const activeEpisodeRef = useRef<Episode | null>(null)
@@ -1202,6 +1209,8 @@ function AppShell() {
     setGoogleFileId(null)
     setSyncStatus("idle")
     setLastSyncedAt(null)
+    setSyncError(null)
+    consentRequestedRef.current = false
     try {
       localStorage.removeItem(GOOGLE_SIGNED_IN_STORAGE)
     } catch {
@@ -1209,12 +1218,18 @@ function AppShell() {
     }
   }
 
-  function requestGoogleToken(flow: "signin" | "restore" | "retry") {
+  function requestGoogleToken(
+    flow: "signin" | "restore" | "retry" | "consent",
+  ) {
     const client = tokenClientRef.current
     if (!client) return
     googleFlowRef.current = flow
     client.requestAccessToken(
-      flow === "signin" ? undefined : { prompt: "" },
+      flow === "signin"
+        ? undefined
+        : flow === "consent"
+          ? { prompt: "consent" }
+          : { prompt: "" },
     )
   }
 
@@ -1233,6 +1248,7 @@ function AppShell() {
     }
     syncingRef.current = true
     setSyncStatus("syncing")
+    setSyncError(null)
     try {
       const existingId =
         googleFileId ?? (await findSyncFile(token))?.id ?? null
@@ -1245,9 +1261,27 @@ function AppShell() {
       }
       setSyncStatus("synced")
       setLastSyncedAt(new Date().toISOString())
+      consentRequestedRef.current = false
     } catch (error) {
       if (error instanceof Error && error.message === "GOOGLE_TOKEN_EXPIRED") {
         requestGoogleToken("retry")
+        return
+      }
+      if (
+        error instanceof Error &&
+        error.message === "GOOGLE_INSUFFICIENT_SCOPES"
+      ) {
+        if (!consentRequestedRef.current) {
+          // Token lacks the Drive scope — pop the consent screen again so
+          // the user can allow Drive. The consent success path re-syncs.
+          consentRequestedRef.current = true
+          syncPendingRef.current = false
+          requestGoogleToken("consent")
+          return
+        }
+        setSyncStatus("error")
+        setSyncError(SCOPE_ERROR_MESSAGE)
+        toast.error(SCOPE_ERROR_MESSAGE)
         return
       }
       setSyncStatus("error")
@@ -1265,6 +1299,7 @@ function AppShell() {
 
   async function syncFromDrive(token: string) {
     setSyncStatus("syncing")
+    setSyncError(null)
     const meta = await findSyncFile(token)
     if (!meta) {
       // First sign-in on this account: push local stories up.
@@ -1272,6 +1307,7 @@ function AppShell() {
       setGoogleFileId(created.id)
       setSyncStatus("synced")
       setLastSyncedAt(new Date().toISOString())
+      consentRequestedRef.current = false
       return
     }
     setGoogleFileId(meta.id)
@@ -1295,6 +1331,7 @@ function AppShell() {
     })
     setSyncStatus("synced")
     setLastSyncedAt(new Date().toISOString())
+    consentRequestedRef.current = false
     // Fresh device: open the latest story automatically.
     if (!activeEpisodeRef.current && mergedEpisodes.length > 0) {
       const byThread = new Map<string, Episode[]>()
@@ -1323,6 +1360,10 @@ function AppShell() {
       } else if (flow === "retry") {
         signOutGoogle()
         toast.error("Google session expired — please sign in again.")
+      } else if (flow === "consent") {
+        setSyncStatus("error")
+        setSyncError(SCOPE_ERROR_MESSAGE)
+        toast.error(SCOPE_ERROR_MESSAGE)
       }
       return
     }
@@ -1340,6 +1381,20 @@ function AppShell() {
     } catch (error) {
       if (error instanceof Error && error.message === "GOOGLE_TOKEN_EXPIRED") {
         requestGoogleToken("retry")
+        return
+      }
+      if (
+        error instanceof Error &&
+        error.message === "GOOGLE_INSUFFICIENT_SCOPES"
+      ) {
+        if (!consentRequestedRef.current) {
+          consentRequestedRef.current = true
+          requestGoogleToken("consent")
+          return
+        }
+        setSyncStatus("error")
+        setSyncError(SCOPE_ERROR_MESSAGE)
+        toast.error(SCOPE_ERROR_MESSAGE)
         return
       }
       setSyncStatus("error")
@@ -1698,12 +1753,12 @@ function AppShell() {
                 {syncStatus === "syncing"
                   ? "Syncing…"
                   : syncStatus === "error"
-                    ? "Sync failed — try again"
+                    ? (syncError ?? "Sync failed — try again")
                     : lastSyncedAt
                       ? `Synced · ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                       : "Signed in"}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 <Button
                   variant="outline"
                   size="sm"
