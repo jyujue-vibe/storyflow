@@ -15,6 +15,7 @@ import {
   PencilIcon,
   PlusIcon,
   SettingsIcon,
+  ShuffleIcon,
   SparklesIcon,
   SunIcon,
   TriangleAlertIcon,
@@ -139,6 +140,52 @@ const INTRO_GENRE_PROMPTS: Record<string, string> = {
   detective:
     "Create a mysterious detective story where a clever detective solves a puzzling case with hidden clues.",
 }
+
+// Random story ideas for the intro "Random idea" button — click inserts one
+// (plus its genre) into the Create form. Each idea is a one-line seed JJ can
+// edit before generating.
+const RANDOM_IDEAS: { genre: string; idea: string }[] = [
+  {
+    genre: "family",
+    idea: "မုန့်ဟင်းခါးအိုး တစ်အိုးလုံး ဘယ်သူခိုးစားသွားလဲ လိုက်ရှာတဲ့ မိသားစု ဟာသဇာတ်လမ်း",
+  },
+  {
+    genre: "village",
+    idea: "ရွာထဲက ရေတွင်းထဲ ဖုန်းကျသွားလို့ ဆယ်ဖို့ ကြိုးစားကြတဲ့ ရွာဟာသဇာတ်လမ်း",
+  },
+  {
+    genre: "adventure",
+    idea: "မြို့ထဲ ပျောက်သွားတဲ့ ကြောင်လေးကို လိုက်ရှာရင်း မြေအောက်ဈေးကြီးထဲ ရောက်သွားတဲ့ စွန့်စားခန်းဇာတ်လမ်း",
+  },
+  {
+    genre: "romance",
+    idea: "ဈေးထဲမှာ နေ့တိုင်း မုန့်ဝယ်ရင်း တွေ့တဲ့ ကောင်လေးနဲ့ ကောင်မလေးရဲ့ ချိုမြိန်တဲ့ အချစ်ဇာတ်လမ်း",
+  },
+  {
+    genre: "kids",
+    idea: "ကျောင်းသွားရမှာ ကြောက်တဲ့ ကလေးငယ်က စကားပြောတတ်တဲ့ ကြောင်လေးနဲ့ တွေ့ပြီး ရဲရင့်လာတဲ့ ဇာတ်လမ်း",
+  },
+  {
+    genre: "animal",
+    idea: "ပျောက်သွားတဲ့ ဖိနပ်တစ်ရံကို လိုက်ရှာတဲ့ ခွေးကလေး သုံးကောင်ရဲ့ စွန့်စားခန်း",
+  },
+  {
+    genre: "superhero",
+    idea: "မိုးရွာတိုင်း အစွမ်းရတဲ့ ကောင်လေးက ရွာကို ရေဘေးကနေ ကယ်တင်တဲ့ ဇာတ်လမ်း",
+  },
+  {
+    genre: "detective",
+    idea: "ရွာထဲက ထမင်းဆီဆမ်း ပျောက်မှုကို စုံထောက်ကလေး ဖြေရှင်းတဲ့ လျှို့ဝှက်ဆန်းကြယ် ဇာတ်လမ်း",
+  },
+  {
+    genre: "family",
+    idea: "အဖေ့ရဲ့ ဆိုင်ကယ် ပျောက်သွားလို့ တစ်မိသားစုလုံး လိုက်ရှာတဲ့ ဟာသဇာတ်လမ်း",
+  },
+  {
+    genre: "kids",
+    idea: "ပန်းခြံထဲမှာ စကားပြောတတ်တဲ့ ငှက်ကလေးနဲ့ မိတ်ဆွေဖြစ်သွားတဲ့ ကလေးမလေးရဲ့ ဇာတ်လမ်း",
+  },
+]
 
 const STYLE_OPTIONS = [
   { value: "cinematic", label: "Cinematic 3D" },
@@ -1892,6 +1939,25 @@ function AppShell() {
                     {option.label}
                   </Button>
                 ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => {
+                    const candidates = RANDOM_IDEAS.filter(
+                      (entry) => entry.idea !== idea,
+                    )
+                    const list =
+                      candidates.length > 0 ? candidates : RANDOM_IDEAS
+                    const pick =
+                      list[Math.floor(Math.random() * list.length)]
+                    setGenre(pick.genre)
+                    setIdea(pick.idea)
+                  }}
+                >
+                  <ShuffleIcon />
+                  Random idea
+                </Button>
               </EmptyContent>
             </Empty>
 
