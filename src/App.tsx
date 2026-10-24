@@ -95,11 +95,6 @@ const EXAMPLE_IDEAS = [
   "မနက်ခင်း ကောက်ညှင်းပေါင်း လျှို့ဝှက်ချက်",
 ]
 
-const EXAMPLE_EPISODES = [
-  { id: "ep-1", title: "ပျောက်သော ထမင်းဆီဆမ်း", meta: "Episode 01 · 80s" },
-  { id: "ep-2", title: "မနက်ခင်း ကောက်ညှင်းပေါင်း လျှို့ဝှက်ချက်", meta: "Episode 01 · 80s" },
-]
-
 const GENRE_OPTIONS = [
   { value: "family", label: "မိသားစုဟာသ" },
   { value: "village", label: "ရွာဟာသ" },
@@ -652,7 +647,6 @@ function AppShell() {
   const [parseIssues, setParseIssues] = useState<string[]>([])
   const [rawFallback, setRawFallback] = useState<string | null>(null)
 
-  const deleteEpisode = EXAMPLE_EPISODES.find((e) => e.id === deleteTarget)
   const deleteSavedEpisode = episodes.find((e) => e.id === deleteTarget)
   const busy = generating
 
@@ -835,40 +829,6 @@ function AppShell() {
                       isActive={activeEpisode?.id === episode.id}
                       onClick={() => { showEpisode(episode); setShowGuide(false) }}
                     >
-                      <FilmIcon />
-                      <span className="truncate">{episode.title}</span>
-                    </SidebarMenuButton>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <SidebarMenuAction aria-label="Episode actions" />
-                        }
-                      >
-                        <EllipsisVerticalIcon />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start">
-                        <DropdownMenuItem
-                          onClick={() =>
-                            toast.success("Export coming in the next step")
-                          }
-                        >
-                          Export prompts
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => setDeleteTarget(episode.id)}
-                        >
-                          <Trash2Icon />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
-                ))}
-                {EXAMPLE_EPISODES.map((episode) => (
-                  <SidebarMenuItem key={episode.id}>
-                    <SidebarMenuButton>
                       <FilmIcon />
                       <span className="truncate">{episode.title}</span>
                     </SidebarMenuButton>
@@ -1550,8 +1510,8 @@ function AppShell() {
           <AlertDialogHeader>
             <AlertDialogTitle>Episode ကို ဖျက်မှာလား?</AlertDialogTitle>
             <AlertDialogDescription>
-              {(deleteEpisode ?? deleteSavedEpisode)
-                ? `“${(deleteEpisode ?? deleteSavedEpisode)?.title}” နဲ့ သူ့ရဲ့ prompt တွေအားလုံး အပြီးဖျက်သွားမယ်။ ဒါကို ပြန်မရနိုင်ဘူး။`
+              {deleteSavedEpisode
+                ? `“${deleteSavedEpisode.title}” နဲ့ သူ့ရဲ့ prompt တွေအားလုံး အပြီးဖျက်သွားမယ်။ ဒါကို ပြန်မရနိုင်ဘူး။`
                 : "ဒီ episode ကို အပြီးဖျက်သွားမယ်။ ပြန်မရနိုင်ဘူး။"}
             </AlertDialogDescription>
           </AlertDialogHeader>
