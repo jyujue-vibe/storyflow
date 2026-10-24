@@ -41,6 +41,7 @@ export interface StoryRecord {
 
 export interface Episode {
   id: string
+  threadId: string
   title: string
   episodeNumber: number
   genre: string
@@ -67,6 +68,7 @@ export interface ParseResult {
 
 export interface ParseOptions {
   id?: string
+  threadId?: string
   sceneDuration?: number
   episodeNumber?: number
 }
@@ -454,6 +456,7 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
   return {
     episode: {
       id: opts.id ?? `ep-${Date.now()}`,
+      threadId: opts.threadId ?? "",
       title: title || storyRecord.title || "Untitled Episode",
       episodeNumber,
       genre,
