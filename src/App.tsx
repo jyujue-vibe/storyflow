@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ThemeProvider, useTheme } from "next-themes"
 import { toast } from "sonner"
 
@@ -91,6 +91,18 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Toaster } from "@/components/ui/sonner"
 import { generateEpisodeText } from "@/lib/gemini"
+import {
+  createSyncFile,
+  downloadSyncFile,
+  fetchUserInfo,
+  findSyncFile,
+  mergeEpisodes,
+  mergeThreadTitles,
+  revokeToken,
+  updateSyncFile,
+  type GoogleUser,
+  type SyncFile,
+} from "@/lib/drive"
 import { parseEpisode, type Episode } from "@/lib/parse"
 import {
   Tooltip,
@@ -148,6 +160,61 @@ const RATIO_OPTIONS = [
 const GEMINI_KEY_STORAGE = "mm3d.geminiKey"
 const EPISODES_STORAGE = "mm3d.episodes"
 const THREAD_TITLES_STORAGE = "mm3d.threadTitles"
+// Google sign-in + Drive appDataFolder sync. The client ID is a public
+// identifier (GIS embeds it in the page) — no secret lives in this app.
+const GOOGLE_CLIENT_ID =
+  "984497454642-jcd2elhkfudar4d42sf6353378pvs4bj.apps.googleusercontent.com"
+const GOOGLE_SCOPE =
+  "https://www.googleapis.com/auth/drive.appdata openid email profile"
+const GOOGLE_SIGNED_IN_STORAGE = "mm3d.googleSignedIn"
+
+interface GoogleTokenClient {
+  requestAccessToken: (options?: { prompt?: string }) => void
+}
+
+interface GoogleAccounts {
+  accounts: {
+    oauth2: {
+      initTokenClient: (config: {
+        client_id: string
+        scope: string
+        callback: (response: {
+          access_token?: string
+          error?: string
+          error_description?: string
+        }) => void
+      }) => GoogleTokenClient
+    }
+  }
+}
+
+let gisPromise: Promise<GoogleAccounts> | null = null
+function loadGisScript(): Promise<GoogleAccounts> {
+  if (gisPromise) return gisPromise
+  gisPromise = new Promise((resolve, reject) => {
+    const existing = (
+      window as unknown as { google?: GoogleAccounts }
+    ).google
+    if (existing?.accounts?.oauth2) {
+      resolve(existing)
+      return
+    }
+    const script = document.createElement("script")
+    script.src = "https://accounts.google.com/gsi/client"
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      const loaded = (
+        window as unknown as { google?: GoogleAccounts }
+      ).google
+      if (loaded?.accounts?.oauth2) resolve(loaded)
+      else reject(new Error("GIS unavailable"))
+    }
+    script.onerror = () => reject(new Error("GIS failed to load"))
+    document.head.appendChild(script)
+  })
+  return gisPromise
+}
 
 // The Gem's own generation status phrases, cycled while Generate runs.
 const LOADING_PHRASES = [
@@ -1034,6 +1101,25 @@ function AppShell() {
   )
   const [renameThreadId, setRenameThreadId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  // Google account + Drive sync. The access token lives in memory only
+  // (never localStorage) — a reload signs out and silently restores.
+  const [googleReady, setGoogleReady] = useState(false)
+  const [googleLoadFailed, setGoogleLoadFailed] = useState(false)
+  const [googleToken, setGoogleToken] = useState<string | null>(null)
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null)
+  const [googleFileId, setGoogleFileId] = useState<string | null>(null)
+  const [syncStatus, setSyncStatus] = useState<
+    "idle" | "syncing" | "synced" | "error"
+  >("idle")
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
+  const tokenClientRef = useRef<GoogleTokenClient | null>(null)
+  const tokenRef = useRef<string | null>(null)
+  const googleFlowRef = useRef<"signin" | "restore" | "retry" | null>(null)
+  const syncingRef = useRef(false)
+  const syncPendingRef = useRef(false)
+  const activeEpisodeRef = useRef<Episode | null>(null)
+  const episodesRef = useRef<Episode[]>([])
+  const threadTitlesRef = useRef<Record<string, string>>({})
   const [episodes, setEpisodes] = useState<Episode[]>(() => loadSavedEpisodes())
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null)
   const [openSections, setOpenSections] = useState<string[]>(["details"])
@@ -1082,6 +1168,233 @@ function AppShell() {
     ? (threads.find((thread) => thread.id === activeEpisode.threadId) ?? null)
     : null
   const deleteThread = threads.find((thread) => thread.id === deleteThreadId) ?? null
+
+  // Keep refs fresh for the Google callbacks (the GIS token callback is
+  // created once on mount and would otherwise see stale state).
+  useEffect(() => {
+    activeEpisodeRef.current = activeEpisode
+  }, [activeEpisode])
+  useEffect(() => {
+    episodesRef.current = episodes
+  }, [episodes])
+  useEffect(() => {
+    threadTitlesRef.current = threadTitles
+  }, [threadTitles])
+
+  function setToken(token: string | null) {
+    tokenRef.current = token
+    setGoogleToken(token)
+  }
+
+  function buildSyncFile(): SyncFile {
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      episodes: episodesRef.current,
+      threadTitles: threadTitlesRef.current,
+    }
+  }
+
+  function signOutGoogle() {
+    if (tokenRef.current) revokeToken(tokenRef.current)
+    setToken(null)
+    setGoogleUser(null)
+    setGoogleFileId(null)
+    setSyncStatus("idle")
+    setLastSyncedAt(null)
+    try {
+      localStorage.removeItem(GOOGLE_SIGNED_IN_STORAGE)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function requestGoogleToken(flow: "signin" | "restore" | "retry") {
+    const client = tokenClientRef.current
+    if (!client) return
+    googleFlowRef.current = flow
+    client.requestAccessToken(
+      flow === "signin" ? undefined : { prompt: "" },
+    )
+  }
+
+  function signInGoogle() {
+    requestGoogleToken("signin")
+  }
+
+  async function syncToDrive() {
+    const token = tokenRef.current
+    if (!token) return
+    // Serialize uploads: a change that lands mid-upload re-runs after it
+    // instead of racing it (last writer would otherwise win with older data).
+    if (syncingRef.current) {
+      syncPendingRef.current = true
+      return
+    }
+    syncingRef.current = true
+    setSyncStatus("syncing")
+    try {
+      const existingId =
+        googleFileId ?? (await findSyncFile(token))?.id ?? null
+      if (existingId) {
+        await updateSyncFile(token, existingId, buildSyncFile())
+        setGoogleFileId(existingId)
+      } else {
+        const created = await createSyncFile(token, buildSyncFile())
+        setGoogleFileId(created.id)
+      }
+      setSyncStatus("synced")
+      setLastSyncedAt(new Date().toISOString())
+    } catch (error) {
+      if (error instanceof Error && error.message === "GOOGLE_TOKEN_EXPIRED") {
+        requestGoogleToken("retry")
+        return
+      }
+      setSyncStatus("error")
+      toast.error(
+        error instanceof Error ? error.message : "Google sync failed.",
+      )
+    } finally {
+      syncingRef.current = false
+      if (syncPendingRef.current) {
+        syncPendingRef.current = false
+        void syncToDrive()
+      }
+    }
+  }
+
+  async function syncFromDrive(token: string) {
+    setSyncStatus("syncing")
+    const meta = await findSyncFile(token)
+    if (!meta) {
+      // First sign-in on this account: push local stories up.
+      const created = await createSyncFile(token, buildSyncFile())
+      setGoogleFileId(created.id)
+      setSyncStatus("synced")
+      setLastSyncedAt(new Date().toISOString())
+      return
+    }
+    setGoogleFileId(meta.id)
+    const remote = await downloadSyncFile(token, meta.id)
+    const mergedEpisodes = mergeEpisodes(
+      episodesRef.current,
+      remote.episodes,
+    )
+    const mergedTitles = mergeThreadTitles(
+      threadTitlesRef.current,
+      remote.threadTitles,
+    )
+    persistEpisodes(mergedEpisodes)
+    persistThreadTitles(mergedTitles)
+    // Push the merged result back so the cloud also gets local-only stories.
+    await updateSyncFile(token, meta.id, {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      episodes: mergedEpisodes,
+      threadTitles: mergedTitles,
+    })
+    setSyncStatus("synced")
+    setLastSyncedAt(new Date().toISOString())
+    // Fresh device: open the latest story automatically.
+    if (!activeEpisodeRef.current && mergedEpisodes.length > 0) {
+      const byThread = new Map<string, Episode[]>()
+      for (const episode of mergedEpisodes) {
+        const list = byThread.get(episode.threadId) ?? []
+        list.push(episode)
+        byThread.set(episode.threadId, list)
+      }
+      const latest = [...byThread.values()][0].sort(
+        (a, b) => b.episodeNumber - a.episodeNumber,
+      )[0]
+      if (latest) setActiveEpisode(latest)
+    }
+  }
+
+  async function handleGoogleToken(response: {
+    access_token?: string
+    error?: string
+  }) {
+    const flow = googleFlowRef.current
+    googleFlowRef.current = null
+    if (response.error || !response.access_token) {
+      // Silent restore failing just means "sign in again" — no noise.
+      if (flow === "signin") {
+        toast.error("Google sign-in failed. Please try again.")
+      } else if (flow === "retry") {
+        signOutGoogle()
+        toast.error("Google session expired — please sign in again.")
+      }
+      return
+    }
+    const token = response.access_token
+    setToken(token)
+    try {
+      const user = await fetchUserInfo(token)
+      setGoogleUser(user)
+      try {
+        localStorage.setItem(GOOGLE_SIGNED_IN_STORAGE, "1")
+      } catch {
+        /* ignore */
+      }
+      await syncFromDrive(token)
+    } catch (error) {
+      if (error instanceof Error && error.message === "GOOGLE_TOKEN_EXPIRED") {
+        requestGoogleToken("retry")
+        return
+      }
+      setSyncStatus("error")
+      toast.error(
+        error instanceof Error ? error.message : "Google sync failed.",
+      )
+    }
+  }
+
+  // Load Google Identity Services once, then create the token client.
+  useEffect(() => {
+    let cancelled = false
+    loadGisScript()
+      .then((accounts) => {
+        if (cancelled) return
+        tokenClientRef.current = accounts.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: GOOGLE_SCOPE,
+          callback: (response) => {
+            void handleGoogleToken(response)
+          },
+        })
+        setGoogleReady(true)
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleLoadFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Try to restore the Google session silently on load (no popup).
+  useEffect(() => {
+    if (!googleReady) return
+    let signedIn = false
+    try {
+      signedIn = localStorage.getItem(GOOGLE_SIGNED_IN_STORAGE) === "1"
+    } catch {
+      /* ignore */
+    }
+    if (signedIn && !tokenRef.current) {
+      requestGoogleToken("restore")
+    }
+  }, [googleReady])
+
+  // Auto-upload to Drive a moment after stories change, while signed in.
+  // Uploads never change episodes/threadTitles, so this cannot loop.
+  useEffect(() => {
+    if (!googleToken) return
+    const timer = setTimeout(() => {
+      void syncToDrive()
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [episodes, threadTitles, googleToken, googleFileId])
 
   useEffect(() => {
     if (!generating) return
@@ -1359,6 +1672,69 @@ function AppShell() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
+          {googleUser ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                {googleUser.picture ? (
+                  <img
+                    src={googleUser.picture}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="size-8 shrink-0 rounded-full"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {googleUser.name || googleUser.email}
+                  </p>
+                  {googleUser.name ? (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {googleUser.email}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {syncStatus === "syncing"
+                  ? "Syncing…"
+                  : syncStatus === "error"
+                    ? "Sync failed — try again"
+                    : lastSyncedAt
+                      ? `Synced · ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                      : "Signed in"}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void syncToDrive()}
+                  disabled={syncStatus === "syncing"}
+                >
+                  Sync now
+                </Button>
+                <Button variant="ghost" size="sm" onClick={signOutGoogle}>
+                  Sign out
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={!googleReady}
+                onClick={signInGoogle}
+              >
+                Sign in with Google
+              </Button>
+              {googleLoadFailed ? (
+                <p className="text-xs text-muted-foreground">
+                  Google sign-in failed to load. Check your connection and
+                  reopen the app.
+                </p>
+              ) : null}
+            </div>
+          )}
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={() => setSettingsOpen(true)}>
