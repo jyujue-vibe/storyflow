@@ -1855,7 +1855,7 @@ function AppShell() {
               <GuideView />
             </div>
           ) : (
-          <div className={`grid grid-cols-1 gap-8 lg:h-full ${activeEpisode ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[380px_minmax(0,1fr)]"} lg:grid-rows-[minmax(0,1fr)]`}>
+          <div className={`grid grid-cols-1 gap-8 lg:h-full ${activeEpisode ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[2fr_3fr]"} lg:grid-rows-[minmax(0,1fr)]`}>
             {activeEpisode === null && (
             <div className="flex min-w-0 flex-col rounded-xl border lg:min-h-0 lg:overflow-hidden">
             <div className="flex min-w-0 flex-1 flex-col gap-8 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
