@@ -147,6 +147,30 @@
 @theme {
   --font-sans: "Inter Display", "Yati Sans", "Padauk", "Myanmar Text",
     "Noto Sans Myanmar", ui-sans-serif, system-ui, sans-serif;
+
+  /* Accordion open/close animation. Base UI measures the panel into
+     --accordion-panel-height, so the keyframes must use that variable
+     (the Radix variable shipped by tw-animate-css does not match it,
+     which made the accordion snap open instantly). */
+  --animate-accordion-down: accordion-down 0.3s ease-out;
+  --animate-accordion-up: accordion-up 0.3s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--accordion-panel-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--accordion-panel-height);
+    }
+    to {
+      height: 0;
+    }
+  }
 }
 
 @layer base {

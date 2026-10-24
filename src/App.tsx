@@ -253,10 +253,10 @@ function SampleView({
         <CardContent>
           <Accordion multiple defaultValue={["details"]}>
             <AccordionItem value="details">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 ပျောက်သော ထမင်းဆီဆမ်း (Episode 01)
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm text-muted-foreground">
                   Episode Title &amp; Details
                 </p>
@@ -272,10 +272,10 @@ function SampleView({
             </AccordionItem>
 
             <AccordionItem value="summary">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 Story Summary
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm leading-relaxed">
                   ရွာငယ်လေးက သစ်သားအိမ်မှာ ဒေါ်မြက မနက်ခင်းတိုင်း
                   သားလေး ကျော်ကျော်အတွက် ထမင်းဆီဆမ်း ပြင်ပေးတယ်။
@@ -289,10 +289,10 @@ function SampleView({
             </AccordionItem>
 
             <AccordionItem value="bible">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 Character Bible
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <div className="flex flex-col gap-4">
                   <div>
                     <p className="text-sm font-medium">
@@ -317,10 +317,10 @@ function SampleView({
             </AccordionItem>
 
             <AccordionItem value="sheet">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 CHARACTER SHEET PROMPT — CHAR_001 Daw Mya
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Paste this into Flow&apos;s image tool first to get the
                   reference sheet — 4 full-body views + 6 expressions —
@@ -345,10 +345,10 @@ function SampleView({
             </AccordionItem>
 
             <AccordionItem value="plan">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 Scene Continuity Plan
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Location: သစ်သားအိမ် မီးဖိုဆောင် · မနက်ခင်း —
                   တစ်ပိုင်းလုံး ဒီနေရာမှာပဲ။
@@ -372,10 +372,10 @@ function SampleView({
             </AccordionItem>
 
             <AccordionItem value="scene-01">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 IMAGE PROMPT 01 — Opening close-up
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Copy this into Google Flow to generate the still, then use
                   the video prompt on the same frame.
@@ -414,10 +414,10 @@ function SampleView({
             </AccordionItem>
 
             <AccordionItem value="continuity">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 Continuity Note &amp; Next Episode Hook
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <div className="flex flex-col gap-2">
                   <p className="text-sm leading-relaxed">
                     Continuity: ဒေါ်မြ — အစိမ်းနုရောင် ဘလောက်စ်၊ အဆင်ပါသော
@@ -433,6 +433,7 @@ function SampleView({
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button
                     size="lg"
+                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
                     onClick={() =>
                       toast.info("Episode 2 continue is the next build step", {
                         description:
@@ -447,10 +448,10 @@ function SampleView({
             </AccordionItem>
 
             <AccordionItem value="record">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 Story Record (ဇာတ်လမ်းမှတ်တမ်း)
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
                   တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
@@ -556,11 +557,11 @@ function EpisodeView({
             onValueChange={setOpenSections}
           >
             <AccordionItem value="details">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 {episode.title} (Episode{" "}
                 {String(episode.episodeNumber).padStart(2, "0")})
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm text-muted-foreground">
                   Episode Title &amp; Details
                 </p>
@@ -582,10 +583,10 @@ function EpisodeView({
 
             {episode.storySummary && (
               <AccordionItem value="summary">
-                <AccordionTrigger className="text-base">
+                <AccordionTrigger className="py-4 text-base">
                   Story Summary
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   <p className="text-sm leading-relaxed">
                     {episode.storySummary}
                   </p>
@@ -595,10 +596,10 @@ function EpisodeView({
 
             {episode.characters.length > 0 && (
               <AccordionItem value="bible">
-                <AccordionTrigger className="text-base">
+                <AccordionTrigger className="py-4 text-base">
                   Character Bible
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   <div className="flex flex-col gap-4">
                     {episode.characters.map((character) => (
                       <div key={character.id}>
@@ -620,11 +621,11 @@ function EpisodeView({
 
             {episode.sheetPrompts.map((sheet) => (
               <AccordionItem key={sheet.charId} value={`sheet-${sheet.charId}`}>
-                <AccordionTrigger className="text-base">
+                <AccordionTrigger className="py-4 text-base">
                   CHARACTER SHEET PROMPT — {sheet.charId}{" "}
                   {charName(sheet.charId)}
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     Paste this into Flow&apos;s image tool first to get the
                     reference sheet — 4 full-body views + 6 expressions —
@@ -651,10 +652,10 @@ function EpisodeView({
 
             {episode.scenes.length > 0 && (
               <AccordionItem value="plan">
-                <AccordionTrigger className="text-base">
+                <AccordionTrigger className="py-4 text-base">
                   Scene Continuity Plan
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   {episode.location && (
                     <p className="text-sm text-muted-foreground">
                       Location: {episode.location}
@@ -680,11 +681,11 @@ function EpisodeView({
                 key={prompt.number}
                 value={`scene-${prompt.number}`}
               >
-                <AccordionTrigger className="text-base">
+                <AccordionTrigger className="py-4 text-base">
                   Scene {String(prompt.number).padStart(2, "0")} ·{" "}
                   {formatTime(prompt.start)}–{formatTime(prompt.end)}
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     Copy the image prompt into Google Flow to generate the
                     still, then use the video prompt on the same frame.
@@ -747,10 +748,10 @@ function EpisodeView({
             ))}
 
             <AccordionItem value="continuity">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 Continuity Note &amp; Next Episode Hook
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <div className="flex flex-col gap-2">
                   {episode.continuityNote && (
                     <p className="text-sm leading-relaxed">
@@ -770,6 +771,7 @@ function EpisodeView({
                     size="lg"
                     disabled={busy}
                     onClick={() => onContinue(episode)}
+                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
                   >
                     Continue → Episode{" "}
                     {String(episode.episodeNumber + 1).padStart(2, "0")}
@@ -779,10 +781,10 @@ function EpisodeView({
             </AccordionItem>
 
             <AccordionItem value="record">
-              <AccordionTrigger className="text-base">
+              <AccordionTrigger className="py-4 text-base">
                 Story Record (ဇာတ်လမ်းမှတ်တမ်း)
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
                   တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
@@ -1249,7 +1251,7 @@ function AppShell() {
                   <SidebarMenuButton
                     isActive={activeEpisode === null}
                     onClick={() => { showEpisode(null); setShowGuide(false) }}
-                    className="bg-gradient-to-r from-[#7af1ff] via-[#3b82f6] to-[#0c098c] text-white hover:brightness-110"
+                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
                   >
                     <PlusIcon />
                     <span>New story</span>
@@ -1344,12 +1346,14 @@ function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden">
           {showGuide ? (
-            <GuideView />
+            <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto">
+              <GuideView />
+            </div>
           ) : (
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
-            <div className="flex min-w-0 flex-col gap-8 lg:sticky lg:top-20 lg:self-start">
+          <div className="grid grid-cols-1 gap-8 lg:h-full lg:grid-cols-[380px_minmax(0,1fr)]">
+            <div className="flex min-w-0 flex-col gap-8 lg:min-h-0 lg:overflow-y-auto">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -1561,7 +1565,7 @@ function AppShell() {
             )}
 
             </div>
-            <div className="flex min-w-0 flex-col gap-6">
+            <div className="flex min-w-0 flex-col gap-6 lg:min-h-0 lg:overflow-y-auto">
             {parseIssues.length > 0 && activeEpisode && (
               <Alert>
                 <TriangleAlertIcon />
@@ -1587,7 +1591,7 @@ function AppShell() {
                       variant={
                         episode.id === activeEpisode.id ? "default" : "outline"
                       }
-                      size="sm"
+                      size="lg"
                       className="rounded-full"
                       aria-pressed={episode.id === activeEpisode.id}
                       onClick={() => showEpisode(episode)}
@@ -1601,6 +1605,7 @@ function AppShell() {
                     size="lg"
                     disabled={busy}
                     onClick={() => handleContinue(activeEpisode)}
+                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
                   >
                     Continue → Episode{" "}
                     {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
