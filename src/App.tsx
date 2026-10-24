@@ -99,17 +99,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const EXAMPLE_IDEAS = [
-  "အရိုးရှင်းဆုံး မိသားစု ဇာတ်လမ်းတစ်ခု ဖန်တီးပေးပါ",
-  "မနက်ခင်း ကောက်ညှင်းပေါင်း လျှို့ဝှက်ချက်",
-]
-
 const GENRE_OPTIONS = [
   { value: "family", label: "မိသားစုဟာသ" },
   { value: "village", label: "ရွာဟာသ" },
   { value: "adventure", label: "စွန့်စားခန်း" },
+  { value: "romance", label: "Romance" },
+  { value: "kids", label: "Kids stories" },
+  { value: "animal", label: "Animal" },
+  { value: "superhero", label: "Superhero" },
+  { value: "detective", label: "Detective" },
   { value: "custom", label: "Custom" },
 ]
+
+// Genres shown as quick-pick buttons in the intro card.
+const INTRO_GENRES = ["romance", "kids", "animal", "superhero", "detective"]
 
 const STYLE_OPTIONS = [
   { value: "cinematic", label: "Cinematic 3D" },
@@ -1368,14 +1371,17 @@ function AppShell() {
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="flex flex-wrap justify-center gap-2">
-                {EXAMPLE_IDEAS.map((example) => (
+                {GENRE_OPTIONS.filter((option) =>
+                  INTRO_GENRES.includes(option.value)
+                ).map((option) => (
                   <Button
-                    key={example}
-                    variant="outline"
+                    key={option.value}
+                    variant={genre === option.value ? "default" : "outline"}
                     size="lg"
-                    onClick={() => setIdea(example)}
+                    aria-pressed={genre === option.value}
+                    onClick={() => setGenre(option.value)}
                   >
-                    {example}
+                    {option.label}
                   </Button>
                 ))}
               </EmptyContent>
@@ -1609,7 +1615,7 @@ function AppShell() {
                                   ? "default"
                                   : "outline"
                               }
-                              size="icon"
+                              size="icon-lg"
                               className={
                                 episode.id === activeEpisode.id
                                   ? "rounded-l-none border-l border-white/30"
