@@ -1546,16 +1546,6 @@ function AppShell() {
               </CardFooter>
             </Card>
 
-            {generating && (
-              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardContent>
-                  <p className="animate-pulse text-sm leading-relaxed">
-                    {LOADING_PHRASES[loadingPhrase]}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
             {apiError && (
               <Alert variant="destructive">
                 <TriangleAlertIcon />
@@ -1566,6 +1556,16 @@ function AppShell() {
 
             </div>
             <div className="flex min-w-0 flex-col gap-6 lg:min-h-0 lg:overflow-y-auto">
+            {generating && (
+              <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+                <CardContent>
+                  <p className="animate-pulse text-sm leading-relaxed">
+                    {LOADING_PHRASES[loadingPhrase]}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {parseIssues.length > 0 && activeEpisode && (
               <Alert>
                 <TriangleAlertIcon />
