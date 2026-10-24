@@ -698,8 +698,12 @@ function EpisodeView({
                 value={`scene-${prompt.number}`}
               >
                 <AccordionTrigger className="py-4 text-base">
-                  Scene {String(prompt.number).padStart(2, "0")} ·{" "}
-                  {formatTime(prompt.start)}–{formatTime(prompt.end)}
+                  <span className="flex-1">
+                    Scene {String(prompt.number).padStart(2, "0")}
+                  </span>
+                  <span className="mr-2 shrink-0">
+                    {formatTime(prompt.start)}–{formatTime(prompt.end)}
+                  </span>
                 </AccordionTrigger>
                 <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   <p className="text-sm leading-relaxed text-muted-foreground">
