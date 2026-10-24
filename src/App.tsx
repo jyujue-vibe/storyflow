@@ -1855,7 +1855,8 @@ function AppShell() {
               <GuideView />
             </div>
           ) : (
-          <div className="grid grid-cols-1 gap-8 lg:h-full lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+          <div className={`grid grid-cols-1 gap-8 lg:h-full ${activeEpisode ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[380px_minmax(0,1fr)]"} lg:grid-rows-[minmax(0,1fr)]`}>
+            {activeEpisode === null && (
             <div className="flex min-w-0 flex-col rounded-xl border lg:min-h-0 lg:overflow-hidden">
             <div className="flex min-w-0 flex-1 flex-col gap-8 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
             <Empty>
@@ -2027,14 +2028,6 @@ function AppShell() {
                 </div>
               </CardContent>
             </Card>
-
-            {apiError && (
-              <Alert variant="destructive">
-                <TriangleAlertIcon />
-                <AlertTitle>Generate လုပ်လို့မရဘူး</AlertTitle>
-                <AlertDescription>{apiError}</AlertDescription>
-              </Alert>
-            )}
             </div>
             <div className="shrink-0 border-t bg-background px-4 py-4 sm:px-6">
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -2062,6 +2055,7 @@ function AppShell() {
               </div>
             </div>
             </div>
+            )}
             <div className="flex min-w-0 flex-col rounded-xl border lg:min-h-0 lg:overflow-hidden">
             {activeEpisode && activeThread && (
               <div className="flex shrink-0 flex-col gap-4 border-b bg-background px-4 py-4 sm:px-6">
@@ -2165,6 +2159,13 @@ function AppShell() {
               </div>
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
+            {apiError && (
+              <Alert variant="destructive">
+                <TriangleAlertIcon />
+                <AlertTitle>Generate လုပ်လို့မရဘူး</AlertTitle>
+                <AlertDescription>{apiError}</AlertDescription>
+              </Alert>
+            )}
             {generating && (
               <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
                 <CardContent>
