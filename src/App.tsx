@@ -1857,16 +1857,16 @@ function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden">
+        <main className={`mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 ${showGuide || activeEpisode ? "lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden" : ""}`}>
           {showGuide ? (
             <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto">
               <GuideView />
             </div>
           ) : (
-          <div className={`grid grid-cols-1 gap-8 lg:h-full ${activeEpisode ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[2fr_3fr]"} lg:grid-rows-[minmax(0,1fr)]`}>
+          <div className={`grid grid-cols-1 gap-8 ${activeEpisode ? "lg:h-full lg:grid-cols-[minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]" : "lg:grid-cols-1"}`}>
             {activeEpisode === null && (
-            <div className="flex min-w-0 flex-col rounded-xl border lg:min-h-0 lg:overflow-hidden">
-            <div className="flex min-w-0 flex-1 flex-col gap-8 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
+            <div className="flex min-w-0 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-8 p-4 sm:p-6">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -2064,7 +2064,7 @@ function AppShell() {
             </div>
             </div>
             )}
-            <div className="flex min-w-0 flex-col rounded-xl border lg:min-h-0 lg:overflow-hidden">
+            <div className={`flex min-w-0 flex-col ${activeEpisode ? "rounded-xl border lg:min-h-0 lg:overflow-hidden" : ""}`}>
             {activeEpisode && activeThread && (
               <div className="flex shrink-0 flex-col gap-4 border-b bg-background px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-3">
@@ -2166,7 +2166,7 @@ function AppShell() {
                 </div>
               </div>
             )}
-            <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
+            <div className={`flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6 ${activeEpisode ? "lg:min-h-0 lg:overflow-y-auto" : ""}`}>
             {apiError && (
               <Alert variant="destructive">
                 <TriangleAlertIcon />
