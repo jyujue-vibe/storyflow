@@ -1352,7 +1352,7 @@ function AppShell() {
               <GuideView />
             </div>
           ) : (
-          <div className="grid grid-cols-1 gap-8 lg:h-full lg:grid-cols-[380px_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-8 lg:h-full lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-8 lg:min-h-0 lg:overflow-y-auto">
             <Empty>
               <EmptyHeader>
@@ -1586,18 +1586,60 @@ function AppShell() {
               <div className="flex flex-col gap-3">
                 <div className="flex flex-wrap gap-2">
                   {activeThread.episodes.map((episode) => (
-                    <Button
-                      key={episode.id}
-                      variant={
-                        episode.id === activeEpisode.id ? "default" : "outline"
-                      }
-                      size="lg"
-                      className="rounded-full"
-                      aria-pressed={episode.id === activeEpisode.id}
-                      onClick={() => showEpisode(episode)}
-                    >
-                      Ep {String(episode.episodeNumber).padStart(2, "0")}
-                    </Button>
+                    <div key={episode.id} className="flex">
+                      <Button
+                        variant={
+                          episode.id === activeEpisode.id
+                            ? "default"
+                            : "outline"
+                        }
+                        size="lg"
+                        className="rounded-r-none"
+                        aria-pressed={episode.id === activeEpisode.id}
+                        onClick={() => showEpisode(episode)}
+                      >
+                        Ep {String(episode.episodeNumber).padStart(2, "0")}
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant={
+                                episode.id === activeEpisode.id
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="icon"
+                              className={
+                                episode.id === activeEpisode.id
+                                  ? "rounded-l-none border-l border-white/30"
+                                  : "rounded-l-none border-l-0"
+                              }
+                              aria-label={`Ep ${String(episode.episodeNumber).padStart(2, "0")} actions`}
+                            />
+                          }
+                        >
+                          <EllipsisVerticalIcon />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              toast.success("Export coming in the next step")
+                            }
+                          >
+                            Export prompts
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => setDeleteTarget(episode.id)}
+                          >
+                            <Trash2Icon />
+                            Delete episode
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   ))}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1610,37 +1652,6 @@ function AppShell() {
                     Continue → Episode{" "}
                     {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="size-11"
-                          aria-label="Episode actions"
-                        />
-                      }
-                    >
-                      <EllipsisVerticalIcon />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem
-                        onClick={() =>
-                          toast.success("Export coming in the next step")
-                        }
-                      >
-                        Export prompts
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setDeleteTarget(activeEpisode.id)}
-                      >
-                        <Trash2Icon />
-                        Delete episode
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
               </div>
             )}
