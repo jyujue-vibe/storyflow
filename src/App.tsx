@@ -1565,7 +1565,7 @@ function AppShell() {
             {generating && (
               <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
                 <CardContent>
-                  <p className="animate-pulse text-sm leading-relaxed">
+                  <p className="animate-pulse text-center text-sm leading-relaxed">
                     {LOADING_PHRASES[loadingPhrase]}
                   </p>
                 </CardContent>
