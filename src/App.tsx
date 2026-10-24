@@ -66,7 +66,6 @@ import {
 import {
   Empty,
   EmptyContent,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -1422,12 +1421,6 @@ function AppShell() {
                   <SparklesIcon />
                 </EmptyMedia>
                 <EmptyTitle>ဇာတ်လမ်း idea တစ်ကြောင်း ရိုက်ထည့်ပါ</EmptyTitle>
-                <EmptyDescription className="leading-relaxed">
-                  Gem ထဲကလိုပဲ — idea အကြမ်းတစ်ကြောင်းကနေ Episode package
-                  အပြည့်အစုံ (Title, Story, Characters, 10 Scenes, Image + Video
-                  Prompts) ထုတ်ပေးမယ်။ ပြီးရင် Copy နှိပ်ပြီး Google Flow ထဲ
-                  ထည့်ရုံပဲ။
-                </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="flex flex-row flex-wrap justify-center gap-2">
                 {GENRE_OPTIONS.filter((option) =>
