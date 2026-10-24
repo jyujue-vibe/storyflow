@@ -11,6 +11,7 @@ import {
   EyeOffIcon,
   FilmIcon,
   MoonIcon,
+  PencilIcon,
   PlusIcon,
   SettingsIcon,
   SparklesIcon,
@@ -147,6 +148,7 @@ const RATIO_OPTIONS = [
 
 const GEMINI_KEY_STORAGE = "mm3d.geminiKey"
 const EPISODES_STORAGE = "mm3d.episodes"
+const THREAD_TITLES_STORAGE = "mm3d.threadTitles"
 
 // The Gem's own generation status phrases, cycled while Generate runs.
 const LOADING_PHRASES = [
@@ -162,6 +164,27 @@ function loadSavedKey(): string | null {
     return localStorage.getItem(GEMINI_KEY_STORAGE)
   } catch {
     return null
+  }
+}
+
+// Custom sidebar names for threads (rename). A thread with no override
+// falls back to its first episode's title.
+function loadThreadTitles(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(THREAD_TITLES_STORAGE)
+    if (!raw) return {}
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return {}
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
+      if (typeof value === "string") out[key] = value
+    }
+    return out
+  } catch {
+    return {}
   }
 }
 
@@ -242,7 +265,7 @@ function ThemeToggle() {
           <Button
             variant="outline"
             size="icon"
-            className="size-11"
+            className="size-9"
             aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
             onClick={() => setTheme(dark ? "light" : "dark")}
           />
@@ -1007,6 +1030,11 @@ function AppShell() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null)
+  const [threadTitles, setThreadTitles] = useState<Record<string, string>>(() =>
+    loadThreadTitles(),
+  )
+  const [renameThreadId, setRenameThreadId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
   const [episodes, setEpisodes] = useState<Episode[]>(() => loadSavedEpisodes())
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null)
   const [openSections, setOpenSections] = useState<string[]>(["details"])
@@ -1042,11 +1070,15 @@ function AppShell() {
         sorted.find((episode) => episode.episodeNumber === 1) ?? sorted[0]
       return {
         id,
-        title: first?.title || first?.storyRecord?.title || "Untitled story",
+        title:
+          threadTitles[id] ||
+          first?.title ||
+          first?.storyRecord?.title ||
+          "Untitled story",
         episodes: sorted,
       }
     })
-  }, [episodes])
+  }, [episodes, threadTitles])
   const activeThread = activeEpisode
     ? (threads.find((thread) => thread.id === activeEpisode.threadId) ?? null)
     : null
@@ -1090,6 +1122,15 @@ function AppShell() {
       localStorage.setItem(EPISODES_STORAGE, JSON.stringify(next))
     } catch {
       /* storage full or unavailable — episodes stay in memory for the session */
+    }
+  }
+
+  function persistThreadTitles(next: Record<string, string>) {
+    setThreadTitles(next)
+    try {
+      localStorage.setItem(THREAD_TITLES_STORAGE, JSON.stringify(next))
+    } catch {
+      /* storage full or unavailable — titles stay in memory for the session */
     }
   }
 
@@ -1287,6 +1328,15 @@ function AppShell() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start">
                         <DropdownMenuItem
+                          onClick={() => {
+                            setRenameThreadId(thread.id)
+                            setRenameValue(thread.title)
+                          }}
+                        >
+                          <PencilIcon />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() =>
                             toast.success("Export coming in the next step")
                           }
@@ -1338,7 +1388,7 @@ function AppShell() {
             <Button
               variant={showGuide ? "default" : "outline"}
               aria-label="How to Use"
-              className="h-11"
+              className="h-9"
               onClick={() => setShowGuide(true)}
             >
               <BookOpenIcon />
@@ -1349,7 +1399,7 @@ function AppShell() {
               variant="outline"
               size="icon"
               aria-label="Settings"
-              className="size-11"
+              className="size-9"
               onClick={() => setSettingsOpen(true)}
             >
               <SettingsIcon />
@@ -1915,6 +1965,9 @@ function AppShell() {
                   persistEpisodes(
                     episodes.filter((e) => e.threadId !== deleteThread.id),
                   )
+                  const nextTitles = { ...threadTitles }
+                  delete nextTitles[deleteThread.id]
+                  persistThreadTitles(nextTitles)
                   if (activeEpisode?.threadId === deleteThread.id) {
                     setActiveEpisode(null)
                   }
@@ -1928,6 +1981,54 @@ function AppShell() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={renameThreadId !== null}
+        onOpenChange={(open: boolean) => {
+          if (!open) setRenameThreadId(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Story နာမည် ပြောင်းမယ်</DialogTitle>
+            <DialogDescription>
+              Sidebar မှာ ပြမယ့် နာမည်ပါ — episode တွေရဲ့ နာမည်က
+              မပြောင်းဘူး။
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const name = renameValue.trim()
+              if (!renameThreadId || !name) return
+              persistThreadTitles({
+                ...threadTitles,
+                [renameThreadId]: name,
+              })
+              setRenameThreadId(null)
+              toast.success("Story renamed")
+            }}
+          >
+            <Input
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+              placeholder="Story name"
+              aria-label="Story name"
+              className="text-base"
+              autoFocus
+            />
+            <DialogFooter>
+              <DialogClose
+                render={<Button variant="outline" size="lg">Cancel</Button>}
+              />
+              <Button size="lg" type="submit" disabled={!renameValue.trim()}>
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Toaster />
     </SidebarProvider>
