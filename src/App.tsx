@@ -199,6 +199,21 @@ function formatTime(totalSeconds: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 }
 
+// Accordion section ids for an episode, in display order. Used for the
+// Expand-all button in the fixed right-panel header.
+function episodeSectionIds(episode: Episode): string[] {
+  return [
+    "details",
+    ...(episode.storySummary ? ["summary"] : []),
+    ...(episode.characters.length > 0 ? ["bible"] : []),
+    ...episode.sheetPrompts.map((sheet) => `sheet-${sheet.charId}`),
+    ...(episode.scenes.length > 0 ? ["plan"] : []),
+    ...episode.prompts.map((prompt) => `scene-${prompt.number}`),
+    "continuity",
+    "record",
+  ]
+}
+
 // Sample episode arc for the output preview (UI sample only — real episodes come
 // from Generate). Scene 1 and Scene 10 follow the learned Example A; scenes 2–9
 // are sample arc beats drawn from the same story summary.
@@ -517,60 +532,28 @@ function EpisodeView({
   busy,
   onCopy,
   onContinue,
+  openSections,
+  onOpenSectionsChange,
 }: {
   episode: Episode
   busy: boolean
   onCopy: (text: string, label: string) => void
   onContinue: (episode: Episode) => void
+  openSections: string[]
+  onOpenSectionsChange: (value: string[]) => void
 }) {
   const charName = (charId: string) => {
     const found = episode.characters.find((c) => c.id === charId)
     return found ? `${found.name} (${found.transliteration})` : charId
   }
-  const sectionIds = [
-    "details",
-    ...(episode.storySummary ? ["summary"] : []),
-    ...(episode.characters.length > 0 ? ["bible"] : []),
-    ...episode.sheetPrompts.map((sheet) => `sheet-${sheet.charId}`),
-    ...(episode.scenes.length > 0 ? ["plan"] : []),
-    ...episode.prompts.map((prompt) => `scene-${prompt.number}`),
-    "continuity",
-    "record",
-  ]
-  const [openSections, setOpenSections] = useState<string[]>(["details"])
   return (
     <section className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-lg font-medium">Episode output</h2>
-        <p className="text-sm text-muted-foreground">
-          Generate လုပ်ထားတဲ့ episode အစစ်ပါ — prompt တစ်ခုချင်းစီကို Copy
-          နှိပ်ပြီး Google Flow ထဲ ထည့်ပါ။
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => setOpenSections(sectionIds)}
-        >
-          အကုန်ဖွင့်
-        </Button>
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => setOpenSections([])}
-        >
-          အကုန်ပိတ်
-        </Button>
-      </div>
-
       <Card className={CARD_PADDING}>
         <CardContent>
           <Accordion
             multiple
             value={openSections}
-            onValueChange={setOpenSections}
+            onValueChange={onOpenSectionsChange}
           >
             <AccordionItem value="details">
               <AccordionTrigger className="py-4 text-base">
@@ -1026,6 +1009,7 @@ function AppShell() {
   const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null)
   const [episodes, setEpisodes] = useState<Episode[]>(() => loadSavedEpisodes())
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null)
+  const [openSections, setOpenSections] = useState<string[]>(["details"])
   const [showGuide, setShowGuide] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [loadingPhrase, setLoadingPhrase] = useState(0)
@@ -1083,6 +1067,13 @@ function AppShell() {
       setShowKey(false)
     }
   }, [settingsOpen, savedKey])
+
+  // Switching episodes re-opens only the details section (EpisodeView used
+  // to reset this by remounting; the state now lives here for the fixed
+  // right-panel header's Expand/Collapse buttons).
+  useEffect(() => {
+    setOpenSections(["details"])
+  }, [activeEpisode?.id])
 
   function copyPrompt(text: string, label: string) {
     void navigator.clipboard?.writeText(text).catch(() => {
@@ -1373,7 +1364,8 @@ function AppShell() {
             </div>
           ) : (
           <div className="grid grid-cols-1 gap-8 lg:h-full lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
-            <div className="flex min-w-0 flex-col gap-8 lg:min-h-0 lg:overflow-y-auto">
+            <div className="flex min-w-0 flex-col rounded-xl border lg:min-h-0 lg:overflow-hidden">
+            <div className="flex min-w-0 flex-1 flex-col gap-8 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -1548,7 +1540,18 @@ function AppShell() {
                   </p>
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            </Card>
+
+            {apiError && (
+              <Alert variant="destructive">
+                <TriangleAlertIcon />
+                <AlertTitle>Generate လုပ်လို့မရဘူး</AlertTitle>
+                <AlertDescription>{apiError}</AlertDescription>
+              </Alert>
+            )}
+            </div>
+            <div className="shrink-0 border-t bg-background px-4 py-4 sm:px-6">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   size="lg"
@@ -1570,19 +1573,111 @@ function AppShell() {
                   <SparklesIcon />
                   {generating ? "Generating…" : "Generate Episode"}
                 </Button>
-              </CardFooter>
-            </Card>
-
-            {apiError && (
-              <Alert variant="destructive">
-                <TriangleAlertIcon />
-                <AlertTitle>Generate လုပ်လို့မရဘူး</AlertTitle>
-                <AlertDescription>{apiError}</AlertDescription>
-              </Alert>
-            )}
-
+              </div>
             </div>
-            <div className="flex min-w-0 flex-col gap-6 lg:min-h-0 lg:overflow-y-auto">
+            </div>
+            <div className="flex min-w-0 flex-col rounded-xl border lg:min-h-0 lg:overflow-hidden">
+            {activeEpisode && activeThread && (
+              <div className="flex shrink-0 flex-col gap-4 border-b bg-background px-4 py-4 sm:px-6">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {activeThread.episodes.map((episode) => (
+                      <div key={episode.id} className="flex">
+                        <Button
+                          variant={
+                            episode.id === activeEpisode.id
+                              ? "default"
+                              : "outline"
+                          }
+                          size="lg"
+                          className="rounded-r-none"
+                          aria-pressed={episode.id === activeEpisode.id}
+                          onClick={() => showEpisode(episode)}
+                        >
+                          Ep {String(episode.episodeNumber).padStart(2, "0")}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant={
+                                  episode.id === activeEpisode.id
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="icon-lg"
+                                className={
+                                  episode.id === activeEpisode.id
+                                    ? "rounded-l-none border-l border-white/30"
+                                    : "rounded-l-none border-l-0"
+                                }
+                                aria-label={`Ep ${String(episode.episodeNumber).padStart(2, "0")} actions`}
+                              />
+                            }
+                          >
+                            <EllipsisVerticalIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                toast.success("Export coming in the next step")
+                              }
+                            >
+                              Export prompts
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => setDeleteTarget(episode.id)}
+                            >
+                              <Trash2Icon />
+                              Delete episode
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="lg"
+                      disabled={busy}
+                      onClick={() => handleContinue(activeEpisode)}
+                      className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                    >
+                      Continue → Episode{" "}
+                      {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-lg font-medium">Episode output</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Generate လုပ်ထားတဲ့ episode အစစ်ပါ — prompt တစ်ခုချင်းစီကို Copy
+                    နှိပ်ပြီး Google Flow ထဲ ထည့်ပါ။
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() =>
+                      setOpenSections(episodeSectionIds(activeEpisode))
+                    }
+                  >
+                    အကုန်ဖွင့်
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setOpenSections([])}
+                  >
+                    အကုန်ပိတ်
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
             {generating && (
               <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
                 <CardContent>
@@ -1607,80 +1702,6 @@ function AppShell() {
                   </ul>
                 </AlertDescription>
               </Alert>
-            )}
-
-            {activeEpisode && activeThread && (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
-                  {activeThread.episodes.map((episode) => (
-                    <div key={episode.id} className="flex">
-                      <Button
-                        variant={
-                          episode.id === activeEpisode.id
-                            ? "default"
-                            : "outline"
-                        }
-                        size="lg"
-                        className="rounded-r-none"
-                        aria-pressed={episode.id === activeEpisode.id}
-                        onClick={() => showEpisode(episode)}
-                      >
-                        Ep {String(episode.episodeNumber).padStart(2, "0")}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant={
-                                episode.id === activeEpisode.id
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="icon-lg"
-                              className={
-                                episode.id === activeEpisode.id
-                                  ? "rounded-l-none border-l border-white/30"
-                                  : "rounded-l-none border-l-0"
-                              }
-                              aria-label={`Ep ${String(episode.episodeNumber).padStart(2, "0")} actions`}
-                            />
-                          }
-                        >
-                          <EllipsisVerticalIcon />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              toast.success("Export coming in the next step")
-                            }
-                          >
-                            Export prompts
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => setDeleteTarget(episode.id)}
-                          >
-                            <Trash2Icon />
-                            Delete episode
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="lg"
-                    disabled={busy}
-                    onClick={() => handleContinue(activeEpisode)}
-                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
-                  >
-                    Continue → Episode{" "}
-                    {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
-                  </Button>
-                </div>
-              </div>
             )}
 
             {rawFallback ? (
@@ -1734,10 +1755,13 @@ function AppShell() {
                 busy={busy}
                 onCopy={copyPrompt}
                 onContinue={handleContinue}
+                openSections={openSections}
+                onOpenSectionsChange={setOpenSections}
               />
             ) : (
             <SampleView sceneDuration={sceneDuration} onCopy={copyPrompt} />
             )}
+            </div>
             </div>
           </div>
           )}

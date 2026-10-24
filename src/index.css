@@ -181,3 +181,25 @@
     @apply bg-background font-sans text-foreground;
   }
 }
+
+/* Thin scrollbars everywhere (both main panels included): 6px rounded thumb
+   in a muted theme color, transparent track. Firefox uses scrollbar-width. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent)
+    transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+}
