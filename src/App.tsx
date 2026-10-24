@@ -114,6 +114,12 @@ const DURATION_OPTIONS = [
   { value: 10, label: "10s" },
 ]
 
+const RATIO_OPTIONS = [
+  { value: "16:9", label: "16:9", full: "16:9 Landscape" },
+  { value: "9:16", label: "9:16", full: "9:16 Portrait" },
+  { value: "1:1", label: "1:1", full: "1:1 Square" },
+]
+
 const GEMINI_KEY_STORAGE = "mm3d.geminiKey"
 const EPISODES_STORAGE = "mm3d.episodes"
 
@@ -502,12 +508,12 @@ const GUIDE_STEPS = [
       "မြန်မာ idea အတိုလေး တစ်ကြောင်း ရိုက်ထည့်ပါ — ဥပမာ မိသားစု၊ ရွာမနက်ခင်း၊ ပျောက်သွားတဲ့ ဟင်းတစ်ခွက်။ တစ်ကြောင်းဆိုလုံလောက်ပြီ၊ StoryFlow က episode အပြည့်အစုံ ချဲ့ပေးမယ်။",
   },
   {
-    titleEn: "Pick Genre, Visual Style and Scene duration",
-    titleMm: "Genre, Style, Duration ရွေးပါ",
+    titleEn: "Pick Genre, Visual Style, Scene duration and Ratio",
+    titleMm: "Genre, Style, Duration, Ratio ရွေးပါ",
     bodyEn:
-      "Pick a Genre and a Visual Style from the chips, or choose Custom and type anything — custom text is sent to Gemini exactly as written. Pick a scene duration: 6, 8 or 10 seconds per scene. Every episode has 10 scenes.",
+      "Pick a Genre and a Visual Style from the chips, or choose Custom and type anything — custom text is sent to Gemini exactly as written. Pick a scene duration: 6, 8 or 10 seconds per scene. Pick an aspect ratio: 16:9 for YouTube, 9:16 for Shorts / Reels / TikTok, or 1:1 for a square post — and pick the same ratio in Flow. Every episode has 10 scenes.",
     bodyMm:
-      "Chip တွေထဲက Genre နဲ့ Visual Style ရွေးပါ၊ ဒါမှမဟုတ် Custom ရွေးပြီး ကြိုက်တာရိုက်ပါ — Custom စာသားကို Gemini ဆီ အတိုင်းအတာ ပို့ပေးတယ်။ Scene duration ကို 6s / 8s / 10s ရွေးပါ။ Episode တိုင်းမှာ scene 10 ခု ပါတယ်။",
+      "Chip တွေထဲက Genre နဲ့ Visual Style ရွေးပါ၊ ဒါမှမဟုတ် Custom ရွေးပြီး ကြိုက်တာရိုက်ပါ — Custom စာသားကို Gemini ဆီ အတိုင်းအတာ ပို့ပေးတယ်။ Scene duration ကို 6s / 8s / 10s ရွေးပါ။ Ratio ကို ရွေးပါ — 16:9 = YouTube, 9:16 = Shorts / Reels / TikTok, 1:1 = square post အတွက်၊ Flow ထဲမှာလည်း ဒီ ratio အတိုင်း ရွေးပါ။ Episode တိုင်းမှာ scene 10 ခု ပါတယ်။",
   },
   {
     titleEn: "Press Generate Episode",
@@ -529,17 +535,17 @@ const GUIDE_STEPS = [
     titleEn: "Make stills and clips in Google Flow",
     titleMm: "Flow ထဲမှာ ပုံနဲ့ clip လုပ်ပါ",
     bodyEn:
-      "For each scene, paste the IMAGE prompt into Flow to make the still, then use the VIDEO prompt together with that still to make the clip (16:9, x1). Each video prompt has ONE speaker only, with exact Burmese dialogue and Burmese lip-sync.",
+      "For each scene, paste the IMAGE prompt into Flow to make the still, then use the VIDEO prompt together with that still to make the clip (your chosen ratio, x1). Each video prompt has ONE speaker only, with exact Burmese dialogue and Burmese lip-sync.",
     bodyMm:
-      "Scene တစ်ခုချင်းစီအတွက် IMAGE prompt ကို Flow ထဲ paste လုပ်ပြီး still ထုတ်ပါ၊ ပြီးရင် အဲဒီ still နဲ့ VIDEO prompt ကို တွဲပြီး clip လုပ်ပါ (16:9, x1)။ Video prompt တစ်ခုမှာ စကားပြောသူ တစ်ယောက်ပဲ ပါတယ်၊ မြန်မာစကား အတိအကျ + lip-sync နဲ့ပါ။",
+      "Scene တစ်ခုချင်းစီအတွက် IMAGE prompt ကို Flow ထဲ paste လုပ်ပြီး still ထုတ်ပါ၊ ပြီးရင် အဲဒီ still နဲ့ VIDEO prompt ကို တွဲပြီး clip လုပ်ပါ (ရွေးထားတဲ့ ratio, x1)။ Video prompt တစ်ခုမှာ စကားပြောသူ တစ်ယောက်ပဲ ပါတယ်၊ မြန်မာစကား အတိအကျ + lip-sync နဲ့ပါ။",
   },
   {
     titleEn: "Continue the series",
     titleMm: "Series ဆက်ပါ",
     bodyEn:
-      "Press Continue → Episode 02 to make the next episode. The same characters, outfits and Story Record carry over automatically, so the series stays consistent. You can change the scene duration for the new episode.",
+      "Press Continue → Episode 02 to make the next episode. The same characters, outfits and Story Record carry over automatically, so the series stays consistent. You can change the scene duration and ratio for the new episode.",
     bodyMm:
-      "Continue → Episode 02 နှိပ်ပြီး နောက်အပိုင်း ဆက်လုပ်ပါ။ ဇာတ်ကောင်တွေ၊ အဝတ်အစားတွေ၊ Story Record က အလိုအလျောက် ပါသွားမယ်၊ series တစ်လျှောက် မလွဲတော့ဘူး။ အပိုင်းသစ်အတွက် duration ပြောင်းလို့ရတယ်။",
+      "Continue → Episode 02 နှိပ်ပြီး နောက်အပိုင်း ဆက်လုပ်ပါ။ ဇာတ်ကောင်တွေ၊ အဝတ်အစားတွေ၊ Story Record က အလိုအလျောက် ပါသွားမယ်၊ series တစ်လျှောက် မလွဲတော့ဘူး။ အပိုင်းသစ်အတွက် duration နဲ့ ratio ပြောင်းလို့ရတယ်။",
   },
 ]
 
@@ -634,6 +640,10 @@ function AppShell() {
   const [customStyle, setCustomStyle] = useState("")
   const [sceneDuration, setSceneDuration] = useState(8)
   const totalDuration = 10 * sceneDuration
+  const [ratio, setRatio] = useState("16:9")
+  const ratioFull =
+    RATIO_OPTIONS.find((option) => option.value === ratio)?.full ??
+    "16:9 Landscape"
   const [apiKey, setApiKey] = useState("")
   const [savedKey, setSavedKey] = useState<string | null>(() => loadSavedKey())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -702,11 +712,16 @@ function AppShell() {
     genreText: string,
     styleText: string,
     duration: number,
+    ratioLabel: string,
   ): string {
-    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).`
+    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
   }
 
-  function buildContinuePrompt(episode: Episode, duration: number): string {
+  function buildContinuePrompt(
+    episode: Episode,
+    duration: number,
+    ratioLabel: string,
+  ): string {
     const record = episode.storyRecord
     const characterLines = episode.characters
       .map(
@@ -714,10 +729,14 @@ function AppShell() {
           `[${character.id}] ${character.name} (${character.transliteration}) — ${character.description}`,
       )
       .join("\n")
-    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Genre: ${record.genre}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\nPrevious episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).`
+    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Genre: ${record.genre}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\nPrevious episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
   }
 
-  async function runGenerate(userPrompt: string, duration: number) {
+  async function runGenerate(
+    userPrompt: string,
+    duration: number,
+    aspectLabel: string,
+  ) {
     if (!savedKey) {
       setSettingsOpen(true)
       toast.info("Gemini API key လိုတယ်", {
@@ -743,6 +762,7 @@ function AppShell() {
         })
         return
       }
+      episode.aspect = aspectLabel
       persistEpisodes([episode, ...episodes])
       setActiveEpisode(episode)
       setParseIssues(issues)
@@ -780,13 +800,24 @@ function AppShell() {
       return
     }
     await runGenerate(
-      buildUserPrompt(idea.trim(), effectiveGenre, effectiveStyle, sceneDuration),
+      buildUserPrompt(
+        idea.trim(),
+        effectiveGenre,
+        effectiveStyle,
+        sceneDuration,
+        ratioFull,
+      ),
       sceneDuration,
+      ratioFull,
     )
   }
 
   async function handleContinue(episode: Episode) {
-    await runGenerate(buildContinuePrompt(episode, sceneDuration), sceneDuration)
+    await runGenerate(
+      buildContinuePrompt(episode, sceneDuration, ratioFull),
+      sceneDuration,
+      ratioFull,
+    )
   }
 
   return (
@@ -802,7 +833,7 @@ function AppShell() {
                 <span className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-medium">StoryFlow</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    3D Cartoon Studio
+                    Make your imagination happens
                   </span>
                 </span>
               </SidebarMenuButton>
@@ -900,7 +931,11 @@ function AppShell() {
           </h1>
           <div className="ml-auto flex items-center gap-2">
             <Badge variant="secondary" className="hidden sm:inline-flex">
-              16:9 · 10 scenes × {sceneDuration}s
+              {(activeEpisode
+                ? activeEpisode.aspect.split(" ")[0]
+                : ratio)}{" "}
+              · 10 scenes ×{" "}
+              {activeEpisode ? activeEpisode.sceneDuration : sceneDuration}s
             </Badge>
             <ThemeToggle />
             <Button
@@ -1063,6 +1098,27 @@ function AppShell() {
                   <p className="text-sm text-muted-foreground">
                     10 scenes × {sceneDuration}s = {totalDuration} seconds
                     total.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">Ratio</span>
+                  <div className="flex flex-wrap gap-2">
+                    {RATIO_OPTIONS.map((option) => (
+                      <Button
+                        key={option.value}
+                        variant={ratio === option.value ? "default" : "outline"}
+                        size="sm"
+                        className="rounded-full"
+                        aria-pressed={ratio === option.value}
+                        onClick={() => setRatio(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    16:9 = YouTube · 9:16 = Shorts / Reels / TikTok · 1:1 =
+                    Square post. Flow ထဲမှာလည်း ဒီ ratio အတိုင်း ရွေးပါ။
                   </p>
                 </div>
               </CardContent>
