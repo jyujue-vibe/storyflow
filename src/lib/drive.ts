@@ -45,14 +45,24 @@ async function driveFetch(
   }
   if (!response.ok) {
     let message = `Drive request failed (${response.status})`
+    let reason = ""
     try {
       const body: unknown = await response.json()
-      const apiMessage = (
-        body as { error?: { message?: string } }
-      ).error?.message
-      if (apiMessage) message = apiMessage
+      const apiError = (body as { error?: { message?: string } }).error
+      if (apiError?.message) message = apiError.message
+      reason =
+        (body as { error?: { errors?: { reason?: string }[] } }).error
+          ?.errors?.[0]?.reason ?? ""
     } catch {
       /* keep the status message */
+    }
+    // The token was granted without the Drive scope (e.g. the user unchecked
+    // Drive on the consent screen). Callers re-request consent for it.
+    if (
+      reason === "insufficientPermissions" ||
+      message.includes("insufficient authentication scopes")
+    ) {
+      throw new Error("GOOGLE_INSUFFICIENT_SCOPES")
     }
     throw new Error(message)
   }
