@@ -107,6 +107,13 @@ import {
 } from "@/lib/drive"
 import { parseEpisode, type Episode } from "@/lib/parse"
 import {
+  buildEpisodeMarkdown,
+  buildStoryMarkdown,
+  downloadTextFile,
+  episodeFileName,
+  storyFileName,
+} from "@/lib/export"
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -1867,6 +1874,33 @@ function AppShell() {
     })
   }
 
+  function exportEpisode(episode: Episode) {
+    try {
+      const filename = episodeFileName(episode)
+      downloadTextFile(filename, buildEpisodeMarkdown(episode))
+      toast.success("Exported", { description: filename })
+    } catch {
+      toast.error("Export failed — try again")
+    }
+  }
+
+  function exportStory(thread: {
+    id: string
+    title: string
+    episodes: Episode[]
+  }) {
+    try {
+      const filename = storyFileName(thread.title)
+      downloadTextFile(
+        filename,
+        buildStoryMarkdown(thread.title, thread.episodes),
+      )
+      toast.success("Exported", { description: filename })
+    } catch {
+      toast.error("Export failed — try again")
+    }
+  }
+
   function persistEpisodes(next: Episode[]) {
     setEpisodes(next)
     try {
@@ -2371,9 +2405,7 @@ function AppShell() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="whitespace-nowrap"
-                          onClick={() =>
-                            toast.success("Export coming in the next step")
-                          }
+                          onClick={() => exportStory(thread)}
                         >
                           <DownloadIcon />
                           Export prompts
@@ -2924,9 +2956,7 @@ function AppShell() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="whitespace-nowrap"
-                              onClick={() =>
-                                toast.success("Export coming in the next step")
-                              }
+                              onClick={() => exportEpisode(episode)}
                             >
                               <DownloadIcon />
                               Export prompts
