@@ -1,9 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Self-hosted fonts: Inter Display 4.1 (English, OFL) + Yati Sans (Myanmar,
-   same file JJ already uses on Marvelo). Latin glyphs come from Inter Display;
-   Myanmar glyphs fall through to Yati Sans because Inter has none. */
+/* Self-hosted fonts: Inter Display 4.1 (English, OFL) + Walone (Myanmar,
+   JJ's pick) + Yati Sans as Myanmar fallback (same file JJ already uses
+   on Marvelo). Latin glyphs come from Inter Display; Myanmar glyphs
+   fall through to Walone because Inter has none. */
 @font-face {
   font-family: "Inter Display";
   src: url("./assets/fonts/InterDisplay-Regular.woff2") format("woff2");
@@ -25,6 +26,24 @@
 @font-face {
   font-family: "Inter Display";
   src: url("./assets/fonts/InterDisplay-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Walone";
+  src: url("./assets/fonts/walone-thin.ttf") format("truetype");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Walone";
+  src: url("./assets/fonts/walone-regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Walone";
+  src: url("./assets/fonts/walone-bold.ttf") format("truetype");
   font-weight: 700;
   font-display: swap;
 }
@@ -145,8 +164,8 @@
 }
 
 @theme {
-  --font-sans: "Inter Display", "Yati Sans", "Padauk", "Myanmar Text",
-    "Noto Sans Myanmar", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Display", "Walone", "Yati Sans", "Padauk",
+    "Myanmar Text", "Noto Sans Myanmar", ui-sans-serif, system-ui, sans-serif;
 
   /* Accordion open/close animation. Base UI measures the panel into
      --accordion-panel-height, so the keyframes must use that variable
