@@ -475,7 +475,7 @@ function SampleView({
 
             <BouncyAccordion
         defaultValue="details"
-        classNames={{ description: "text-foreground" }}
+        classNames={{ description: "text-foreground pt-4" }}
         items={[
           {
              id: "details",
@@ -490,7 +490,7 @@ function SampleView({
               <p className="text-sm text-muted-foreground">
                 Episode Title &amp; Details
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <Badge variant="secondary">မိသားစုဟာသ</Badge>
                 <Badge variant="secondary">Cinematic 3D</Badge>
                 <Badge variant="secondary">16:9 Landscape</Badge>
@@ -575,10 +575,10 @@ function SampleView({
                 then use it as the character reference for the scene
                 stills.
               </p>
-              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6 mt-4">
                 {SHEET_PROMPT_DAW_MYA}
               </pre>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   size="lg"
                   onClick={() =>
@@ -607,11 +607,11 @@ function SampleView({
                 Location: သစ်သားအိမ် မီးဖိုဆောင် · မနက်ခင်း —
                 တစ်ပိုင်းလုံး ဒီနေရာမှာပဲ။
               </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-muted-foreground mt-4">
                 Background Map: [BG_001] သစ်သားအိမ် မီးဖိုဆောင် —
                 မနက်ခင်း၊ သစ်သားအိမ် မီးဖိုဆောင်အပြည့်အစုံ။
               </p>
-              <div className="flex flex-col gap-2">
+              <div className="mt-4 flex flex-col gap-4">
                 {SAMPLE_SCENES.map((line, index) => {
                   const start = index * sceneDuration
                   const end = start + sceneDuration
@@ -644,13 +644,13 @@ function SampleView({
                 Copy this into Google Flow to generate the still, then use
                 the video prompt on the same frame.
               </p>
-              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6 mt-4">
                 {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
               </pre>
-              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6 mt-4">
                 {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
               </pre>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   size="lg"
@@ -704,7 +704,7 @@ function SampleView({
             ),
              description: (
               <>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-4">
                 <p className="text-sm leading-relaxed">
                   Continuity: ဒေါ်မြ — အစိမ်းနုရောင် ဘလောက်စ်၊ အဆင်ပါသော
                   ထမီ၊ သနပ်ခါးဝိုင်း၊ ဆံထုံး။ နေရာ — သစ်သားအိမ်
@@ -716,7 +716,7 @@ function SampleView({
                   စောင့်နေသည်။
                 </p>
               </div>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
@@ -748,7 +748,7 @@ function SampleView({
                 Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
                 တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
               </p>
-              <div className="flex flex-col gap-2 text-sm">
+              <div className="mt-4 flex flex-col gap-4 text-sm">
                 <p>
                   <span className="font-medium">Story Title: </span>
                   ပျောက်သော ထမင်းဆီဆမ်း
@@ -821,7 +821,7 @@ function EpisodeView({
             <BouncyAccordion
         value={openSection}
         onValueChange={onOpenSectionChange}
-        classNames={{ description: "text-foreground" }}
+        classNames={{ description: "text-foreground pt-4" }}
         items={[
           {
              id: "details",
@@ -837,7 +837,7 @@ function EpisodeView({
               <p className="text-sm text-muted-foreground">
                 Episode Title &amp; Details
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {episode.genre && (
                   <Badge variant="secondary">{episode.genre}</Badge>
                 )}
@@ -883,7 +883,7 @@ function EpisodeView({
               <>
               <div className="flex flex-col gap-4">
                 {episode.characters.map((character) => (
-                  <div key={character.id}>
+                  <div key={character.id} className="flex flex-col gap-1">
                     <p className="text-sm font-medium">
                       [{character.id}] {character.name} (
                       {character.transliteration})
@@ -916,9 +916,9 @@ function EpisodeView({
                 then use them as the character references for the scene
                 stills. Each sheet stays its own copyable prompt.
               </p>
-              <div className="flex flex-col gap-4">
+              <div className="mt-4 flex flex-col gap-4">
                 {episode.sheetPrompts.map((sheet) => (
-                  <div key={sheet.charId} className="flex flex-col gap-2">
+                  <div key={sheet.charId} className="flex flex-col gap-4">
                     <span className="text-sm font-medium">
                       CHARACTER SHEET PROMPT — {sheet.charId}{" "}
                       {charName(sheet.charId)}
@@ -963,9 +963,9 @@ function EpisodeView({
                 use them for the scene stills and background prompts. Each
                 sheet stays its own copyable prompt.
               </p>
-              <div className="flex flex-col gap-4">
+              <div className="mt-4 flex flex-col gap-4">
                 {episode.backgroundSheets.map((sheet) => (
-                  <div key={sheet.bgId} className="flex flex-col gap-2">
+                  <div key={sheet.bgId} className="flex flex-col gap-4">
                     <span className="text-sm font-medium">
                       BACKGROUND SHEET PROMPT — {sheet.bgId}{" "}
                       {bgName(sheet.bgId)}
@@ -1010,7 +1010,7 @@ function EpisodeView({
                 </p>
               )}
               {episode.backgrounds.length > 0 && (
-                <div className="flex flex-col gap-2">
+                <div className="mt-4 flex flex-col gap-4">
                   <p className="text-sm text-muted-foreground">
                     Background Map:
                   </p>
@@ -1024,7 +1024,7 @@ function EpisodeView({
                   ))}
                 </div>
               )}
-              <div className="flex flex-col gap-2">
+              <div className="mt-4 flex flex-col gap-4">
                 {episode.scenes.map((scene) => (
                   <div key={scene.number} className="flex gap-3 text-sm">
                     <span className="shrink-0 text-muted-foreground">
@@ -1059,9 +1059,9 @@ function EpisodeView({
                   still, the background prompt for the background plate,
                   then use the video prompt on the same frame.
                 </p>
-                <div className="flex flex-col gap-4">
+                <div className="mt-4 flex flex-col gap-4">
                   {prompt.image && (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-4">
                       <span className="text-sm font-medium">
                         IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
                       </span>
@@ -1071,7 +1071,7 @@ function EpisodeView({
                     </div>
                   )}
                   {prompt.background && (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-4">
                       <span className="text-sm font-medium">
                         BACKGROUND PROMPT{" "}
                         {String(prompt.number).padStart(2, "0")}
@@ -1082,7 +1082,7 @@ function EpisodeView({
                     </div>
                   )}
                   {prompt.video && (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-4">
                       <span className="text-sm font-medium">
                         VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
                       </span>
@@ -1092,7 +1092,7 @@ function EpisodeView({
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   {prompt.image && (
                     <Button
                       variant="outline"
@@ -1152,7 +1152,7 @@ function EpisodeView({
             ),
              description: (
               <>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-4">
                 {episode.continuityNote && (
                   <p className="text-sm leading-relaxed">
                     Continuity: {episode.continuityNote}
@@ -1167,7 +1167,7 @@ function EpisodeView({
                 )}
               </div>
               {!hasNextEpisode && (
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button
                     size="lg"
                     disabled={busy}
@@ -1197,7 +1197,7 @@ function EpisodeView({
                 Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
                 တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
               </p>
-              <div className="flex flex-col gap-2 text-sm">
+              <div className="mt-4 flex flex-col gap-4 text-sm">
                 {episode.storyRecord.title && (
                   <p>
                     <span className="font-medium">Story Title: </span>
