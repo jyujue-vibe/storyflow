@@ -53,6 +53,14 @@
   font-weight: 100 900;
   font-display: swap;
 }
+/* Geist Mono (code/mono font, JJ's pick, OFL) — variable wght 100–900,
+   latin subset from Google Fonts, self-hosted like the other fonts. */
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./assets/fonts/geist-mono-variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -166,6 +174,8 @@
 @theme {
   --font-sans: "Inter Display", "Walone", "Yati Sans", "Padauk",
     "Myanmar Text", "Noto Sans Myanmar", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* Accordion open/close animation. Base UI measures the panel into
      --accordion-panel-height, so the keyframes must use that variable
@@ -198,6 +208,19 @@
   }
   body {
     @apply bg-background font-sans text-foreground;
+    /* JJ's Inter Display feature settings (batmanUX, 2026-10-17) —
+       English text only in practice: Walone has no such features. */
+    font-feature-settings:
+      "ss01" on,
+      "cv05" on,
+      "cv06" on,
+      "cv08" on,
+      "cv11" on;
+  }
+  /* Mono stays as-is (JJ's rule): prompt/code blocks opt out of the
+     body's feature settings. */
+  pre {
+    font-feature-settings: normal;
   }
 }
 
