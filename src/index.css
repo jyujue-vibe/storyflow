@@ -1,11 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Self-hosted fonts: Inter Display 4.1 (English, OFL) + FM - MoeTeinPyin
-   Demo (Myanmar, JJ trying it live) + Walone as Myanmar fallback (JJ's
-   earlier pick) + Yati Sans as second fallback (same file JJ already uses
-   on Marvelo). Latin glyphs come from Inter Display; Myanmar glyphs
-   fall through to MoeTeinPyin Demo because Inter has none. */
+/* Self-hosted fonts: Inter Display 4.1 (English, OFL) + Yati Sans as the
+   Myanmar font (JJ's pick — MoeTeinPyin Demo was beautiful but hard to
+   read, reverted 2026-10-25) + Walone as Myanmar fallback (JJ's earlier
+   pick). Latin glyphs come from Inter Display; Myanmar glyphs fall
+   through to Yati Sans because Inter has none. */
 @font-face {
   font-family: "Inter Display";
   src: url("./assets/fonts/InterDisplay-Regular.woff2") format("woff2");
@@ -53,16 +53,6 @@
   src: url("./assets/fonts/YatiSans-Variable.ttf") format("truetype");
   font-weight: 100 900;
   font-display: swap;
-}
-@font-face {
-  font-family: "FM - MoeTeinPyin Demo";
-  src: url("./assets/fonts/MoeTeinPyin-Demo.ttf") format("truetype");
-  font-weight: 400;
-  font-display: swap;
-  /* Measured 2026-10-25: MoeTeinPyin glyphs render ~75% of Walone's ink
-     height at the same px size (13.5 vs 18.0 @14px, 15.25 vs 20.25 @16px).
-     133% restores Walone's visual size; Latin (Inter Display) untouched. */
-  size-adjust: 133%;
 }
 /* Geist Mono (code/mono font, JJ's pick, OFL) — variable wght 100–900,
    latin subset from Google Fonts, self-hosted like the other fonts. */
@@ -183,9 +173,9 @@
 }
 
 @theme {
-  --font-sans: "Inter Display", "FM - MoeTeinPyin Demo", "Walone",
-    "Yati Sans", "Padauk", "Myanmar Text", "Noto Sans Myanmar",
-    ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Display", "Yati Sans", "Walone", "Padauk",
+    "Myanmar Text", "Noto Sans Myanmar", ui-sans-serif, system-ui,
+    sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
 
