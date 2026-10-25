@@ -106,6 +106,7 @@ import {
   type SyncFile,
 } from "@/lib/drive"
 import { parseEpisode, type Episode } from "@/lib/parse"
+import { GenerationModal, type GenerationKind } from "@/components/GenerationModal"
 import {
   buildEpisodeMarkdown,
   buildStoryMarkdown,
@@ -1485,7 +1486,7 @@ function AppShell() {
   const [showGuide, setShowGuide] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [loadingPhrase, setLoadingPhrase] = useState(0)
-  const [apiError, setApiError] = useState<string | null>(null)
+
   const [parseIssues, setParseIssues] = useState<string[]>([])
   const [rawFallback, setRawFallback] = useState<string | null>(null)
 
@@ -1922,7 +1923,6 @@ function AppShell() {
   function showEpisode(episode: Episode | null) {
     setActiveEpisode(episode)
     setRawFallback(null)
-    setApiError(null)
     setParseIssues([])
   }
 
@@ -2126,7 +2126,80 @@ function AppShell() {
     return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Genre: ${record.genre}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\n${backgroundsBlock}Previous episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
   }
 
+  // Generation modal state: the modal is open while generating or while a
+  // generation error is shown. A run token + AbortController make aborts and
+  // retries safe: a stale run's late result can never persist or navigate.
+  const [genKind, setGenKind] = useState<GenerationKind>("generate")
+  const [genError, setGenError] = useState<string | null>(null)
+  const [genSlow, setGenSlow] = useState(false)
+  const genController = useRef<AbortController | null>(null)
+  const genRunId = useRef(0)
+  const genSlowTimer = useRef<number | null>(null)
+  type GenLastRun =
+    | {
+        kind: "generate" | "continue"
+        userPrompt: string
+        duration: number
+        aspectLabel: string
+        threadId: string
+      }
+    | { kind: "rewrite"; episode: Episode; note: string }
+  const genLastRun = useRef<GenLastRun | null>(null)
+
+  function clearGenSlowTimer() {
+    if (genSlowTimer.current !== null) {
+      clearTimeout(genSlowTimer.current)
+      genSlowTimer.current = null
+    }
+  }
+
+  function beginGen(kind: GenerationKind, lastRun: GenLastRun) {
+    clearGenSlowTimer()
+    genLastRun.current = lastRun
+    setGenKind(kind)
+    setGenError(null)
+    setGenSlow(false)
+    genController.current = new AbortController()
+    genRunId.current += 1
+    const myRun = genRunId.current
+    genSlowTimer.current = window.setTimeout(() => {
+      if (genRunId.current === myRun) setGenSlow(true)
+    }, 180000)
+  }
+
+  function abortGen() {
+    genController.current?.abort()
+    genRunId.current += 1
+    clearGenSlowTimer()
+    setGenerating(false)
+    setGenSlow(false)
+    setGenError(null)
+  }
+
+  function retryGen() {
+    const last = genLastRun.current
+    if (!last) return
+    genController.current?.abort()
+    genRunId.current += 1
+    clearGenSlowTimer()
+    setGenError(null)
+    setGenSlow(false)
+    setGenerating(false)
+    if (last.kind === "rewrite") {
+      void runRewrite(last.episode, last.note)
+    } else {
+      void runGenerate(
+        last.kind,
+        last.userPrompt,
+        last.duration,
+        last.aspectLabel,
+        last.threadId,
+      )
+    }
+  }
+
   async function runGenerate(
+    kind: "generate" | "continue",
     userPrompt: string,
     duration: number,
     aspectLabel: string,
@@ -2139,13 +2212,17 @@ function AppShell() {
       })
       return
     }
+    beginGen(kind, { kind, userPrompt, duration, aspectLabel, threadId })
+    const myRun = genRunId.current
     setGenerating(true)
     setLoadingPhrase(0)
-    setApiError(null)
     setRawFallback(null)
     setParseIssues([])
     try {
-      const text = await generateEpisodeText(savedKey, userPrompt)
+      const text = await generateEpisodeText(savedKey, userPrompt, {
+        signal: genController.current?.signal,
+      })
+      if (myRun !== genRunId.current) return
       const { episode, issues } = parseEpisode(text, {
         sceneDuration: duration,
         threadId,
@@ -2153,9 +2230,10 @@ function AppShell() {
       if (!episode) {
         setRawFallback(text)
         setParseIssues(issues)
-        toast.error("Episode ကို parse လုပ်လို့မရဘူး", {
-          description: "Raw output ကို အောက်မှာ ပြထားတယ်။",
-        })
+        setGenSlow(false)
+        setGenError(
+          "Episode ကို parse လုပ်လို့မရဘူး။ Raw output ကို အောက်မှာ ပြထားတယ်။",
+        )
         return
       }
       episode.aspect = aspectLabel
@@ -2166,13 +2244,18 @@ function AppShell() {
         description: `${episode.title} (Episode ${String(episode.episodeNumber).padStart(2, "0")})`,
       })
     } catch (error) {
-      setApiError(
+      if (myRun !== genRunId.current) return
+      setGenSlow(false)
+      setGenError(
         error instanceof Error
           ? error.message
           : "Generate လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။",
       )
     } finally {
-      setGenerating(false)
+      if (myRun === genRunId.current) {
+        setGenerating(false)
+        clearGenSlowTimer()
+      }
     }
   }
 
@@ -2196,6 +2279,7 @@ function AppShell() {
       return
     }
     await runGenerate(
+      "generate",
       buildUserPrompt(
         idea.trim(),
         effectiveGenre,
@@ -2213,6 +2297,7 @@ function AppShell() {
 
   async function handleContinue(episode: Episode) {
     await runGenerate(
+      "continue",
       buildContinuePrompt(episode, sceneDuration, ratioFull),
       sceneDuration,
       ratioFull,
@@ -2271,25 +2356,26 @@ function AppShell() {
       })
       return
     }
+    beginGen("rewrite", { kind: "rewrite", episode, note })
+    const myRun = genRunId.current
     setGenerating(true)
     setLoadingPhrase(0)
-    setApiError(null)
     try {
       const text = await generateEpisodeText(
         savedKey,
         buildRewritePrompt(episode, note),
+        { signal: genController.current?.signal },
       )
+      if (myRun !== genRunId.current) return
       const { episode: fresh, issues } = parseEpisode(text, {
         sceneDuration: episode.sceneDuration,
         threadId: episode.threadId,
       })
       if (!fresh) {
-        setApiError(
+        setGenSlow(false)
+        setGenError(
           "Rewrite ကို parse လုပ်လို့မရဘူး။ အဟောင်း episode အတိုင်း ကျန်ပါတယ် — ပြန်စမ်းပါ။",
         )
-        toast.error("Rewrite လုပ်လို့မရဘူး", {
-          description: "အဟောင်း episode အတိုင်း ကျန်ပါတယ်။",
-        })
         return
       }
       // Same id/number/thread: the rewrite replaces the old episode in
@@ -2315,13 +2401,18 @@ function AppShell() {
         description: `${fresh.title} (Episode ${String(fresh.episodeNumber).padStart(2, "0")})`,
       })
     } catch (error) {
-      setApiError(
+      if (myRun !== genRunId.current) return
+      setGenSlow(false)
+      setGenError(
         error instanceof Error
           ? error.message
           : "Rewrite လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။",
       )
     } finally {
-      setGenerating(false)
+      if (myRun === genRunId.current) {
+        setGenerating(false)
+        clearGenSlowTimer()
+      }
     }
   }
 
@@ -2997,24 +3088,7 @@ function AppShell() {
               </div>
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
-            {apiError && (
-              <Alert variant="destructive" className="rounded-lg bg-card px-2.5 py-2">
-                <AlertIcon />
-                <AlertContent>
-                <AlertTitle>Generate လုပ်လို့မရဘူး</AlertTitle>
-                <AlertDescription>{apiError}</AlertDescription>
-                </AlertContent>
-              </Alert>
-            )}
-            {generating && (
-              <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-                <CardContent>
-                  <p className="animate-pulse text-center text-sm leading-relaxed">
-                    {LOADING_PHRASES[loadingPhrase]}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+
 
             {parseIssues.length > 0 && activeEpisode && (
               <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
@@ -3100,6 +3174,17 @@ function AppShell() {
           )}
         </main>
       </AnimatedSidebarInset>
+
+      <GenerationModal
+        open={generating || genError !== null}
+        kind={genKind}
+        phrase={LOADING_PHRASES[loadingPhrase]}
+        slow={genSlow}
+        error={genError}
+        onAbort={abortGen}
+        onClose={() => setGenError(null)}
+        onRetry={retryGen}
+      />
 
       <CenterMorphModal open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
         <CenterMorphModalContent ariaLabel={editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"} ariaDescribedBy="character-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl">
