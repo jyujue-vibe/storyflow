@@ -1,10 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Self-hosted fonts: Inter Display 4.1 (English, OFL) + Walone (Myanmar,
-   JJ's pick) + Yati Sans as Myanmar fallback (same file JJ already uses
+/* Self-hosted fonts: Inter Display 4.1 (English, OFL) + FM - MoeTeinPyin
+   Demo (Myanmar, JJ trying it live) + Walone as Myanmar fallback (JJ's
+   earlier pick) + Yati Sans as second fallback (same file JJ already uses
    on Marvelo). Latin glyphs come from Inter Display; Myanmar glyphs
-   fall through to Walone because Inter has none. */
+   fall through to MoeTeinPyin Demo because Inter has none. */
 @font-face {
   font-family: "Inter Display";
   src: url("./assets/fonts/InterDisplay-Regular.woff2") format("woff2");
@@ -51,6 +52,12 @@
   font-family: "Yati Sans";
   src: url("./assets/fonts/YatiSans-Variable.ttf") format("truetype");
   font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FM - MoeTeinPyin Demo";
+  src: url("./assets/fonts/MoeTeinPyin-Demo.ttf") format("truetype");
+  font-weight: 400;
   font-display: swap;
 }
 /* Geist Mono (code/mono font, JJ's pick, OFL) — variable wght 100–900,
@@ -172,8 +179,9 @@
 }
 
 @theme {
-  --font-sans: "Inter Display", "Walone", "Yati Sans", "Padauk",
-    "Myanmar Text", "Noto Sans Myanmar", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Display", "FM - MoeTeinPyin Demo", "Walone",
+    "Yati Sans", "Padauk", "Myanmar Text", "Noto Sans Myanmar",
+    ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
 
