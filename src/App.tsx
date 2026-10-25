@@ -126,6 +126,16 @@ type StoryCharacter = {
   behavior: string
 }
 
+// Backgrounds added on the Create form for ONE story thread only —
+// same rule as characters. They are sent to Gemini as locked
+// BG_001, BG_002... on Generate.
+type StoryBackground = {
+  id: string
+  name: string
+  description: string
+  timeWeather: string
+}
+
 const GENRE_OPTIONS = [
   { value: "family", label: "မိသားစုဟာသ" },
   { value: "village", label: "ရွာဟာသ" },
@@ -349,6 +359,20 @@ function loadThreadTitles(): Record<string, string> {
   }
 }
 
+// Episodes saved before backgrounds existed lack the new fields — fill
+// them so old stories render and Continue/Rewrite without crashing.
+function normalizeEpisode(episode: Episode): Episode {
+  return {
+    ...episode,
+    backgrounds: episode.backgrounds ?? [],
+    backgroundSheets: episode.backgroundSheets ?? [],
+    prompts: (episode.prompts ?? []).map((prompt) => ({
+      ...prompt,
+      background: prompt.background ?? "",
+    })),
+  }
+}
+
 function loadSavedEpisodes(): Episode[] {
   try {
     const raw = localStorage.getItem(EPISODES_STORAGE)
@@ -371,7 +395,7 @@ function loadSavedEpisodes(): Episode[] {
         groups.set(key, threadId)
       }
       return { ...episode, threadId }
-    })
+    }).map(normalizeEpisode)
   } catch {
     return []
   }
@@ -390,7 +414,8 @@ function episodeSectionIds(episode: Episode): string[] {
     "details",
     ...(episode.storySummary ? ["summary"] : []),
     ...(episode.characters.length > 0 ? ["bible"] : []),
-    ...episode.sheetPrompts.map((sheet) => `sheet-${sheet.charId}`),
+    ...(episode.sheetPrompts.length > 0 ? ["sheets"] : []),
+    ...(episode.backgroundSheets.length > 0 ? ["background-sheets"] : []),
     ...(episode.scenes.length > 0 ? ["plan"] : []),
     ...episode.prompts.map((prompt) => `scene-${prompt.number}`),
     "continuity",
@@ -570,6 +595,10 @@ function SampleView({
                   Location: သစ်သားအိမ် မီးဖိုဆောင် · မနက်ခင်း —
                   တစ်ပိုင်းလုံး ဒီနေရာမှာပဲ။
                 </p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Background Map: [BG_001] သစ်သားအိမ် မီးဖိုဆောင် —
+                  မနက်ခင်း၊ သစ်သားအိမ် မီးဖိုဆောင်အပြည့်အစုံ။
+                </p>
                 <div className="flex flex-col gap-2">
                   {SAMPLE_SCENES.map((line, index) => {
                     const start = index * sceneDuration
@@ -600,6 +629,9 @@ function SampleView({
                 <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                   {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
                 </pre>
+                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                  {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+                </pre>
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button
                     variant="outline"
@@ -613,6 +645,19 @@ function SampleView({
                   >
                     <CopyIcon />
                     Copy Image Prompt
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() =>
+                      onCopy(
+                        "16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                        "BACKGROUND PROMPT 01",
+                      )
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Background Prompt
                   </Button>
                   <Button
                     size="lg"
@@ -734,6 +779,12 @@ function EpisodeView({
     const found = episode.characters.find((c) => c.id === charId)
     return found ? `${found.name} (${found.transliteration})` : charId
   }
+  const bgName = (bgId: string) => {
+    const found = episode.backgrounds.find((b) => b.id === bgId)
+    if (!found) return bgId
+    const name = found.text.split("—")[0]?.trim()
+    return name ? name : bgId
+  }
   return (
     <section className="flex flex-col gap-6">
       <Card className={CARD_PADDING}>
@@ -806,36 +857,91 @@ function EpisodeView({
               </AccordionItem>
             )}
 
-            {episode.sheetPrompts.map((sheet) => (
-              <AccordionItem key={sheet.charId} value={`sheet-${sheet.charId}`}>
+            {episode.sheetPrompts.length > 0 && (
+              <AccordionItem value="sheets">
                 <AccordionTrigger className="py-4 text-base">
-                  CHARACTER SHEET PROMPT — {sheet.charId}{" "}
-                  {charName(sheet.charId)}
+                  CHARACTER SHEET PROMPT
                 </AccordionTrigger>
                 <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Paste this into Flow&apos;s image tool first to get the
-                    reference sheet — 4 full-body views + 6 expressions —
-                    then use it as the character reference for the scene
-                    stills.
+                    Paste these into Flow&apos;s image tool first to get the
+                    reference sheets — 4 full-body views + 6 expressions each —
+                    then use them as the character references for the scene
+                    stills. Each sheet stays its own copyable prompt.
                   </p>
-                  <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                    {sheet.text}
-                  </pre>
-                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <Button
-                      size="lg"
-                      onClick={() =>
-                        onCopy(sheet.text, `CHARACTER SHEET — ${sheet.charId}`)
-                      }
-                    >
-                      <CopyIcon />
-                      Copy Character Sheet Prompt
-                    </Button>
+                  <div className="flex flex-col gap-4">
+                    {episode.sheetPrompts.map((sheet) => (
+                      <div key={sheet.charId} className="flex flex-col gap-2">
+                        <span className="text-sm font-medium">
+                          CHARACTER SHEET PROMPT — {sheet.charId}{" "}
+                          {charName(sheet.charId)}
+                        </span>
+                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                          {sheet.text}
+                        </pre>
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                          <Button
+                            size="lg"
+                            onClick={() =>
+                              onCopy(
+                                sheet.text,
+                                `CHARACTER SHEET — ${sheet.charId}`,
+                              )
+                            }
+                          >
+                            <CopyIcon />
+                            Copy Character Sheet Prompt
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            )}
+
+            {episode.backgroundSheets.length > 0 && (
+              <AccordionItem value="background-sheets">
+                <AccordionTrigger className="py-4 text-base">
+                  BACKGROUND SHEET PROMPT
+                </AccordionTrigger>
+                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Paste these into Flow&apos;s image tool first to get the
+                    background references — wide view + angles + detail — then
+                    use them for the scene stills and background prompts. Each
+                    sheet stays its own copyable prompt.
+                  </p>
+                  <div className="flex flex-col gap-4">
+                    {episode.backgroundSheets.map((sheet) => (
+                      <div key={sheet.bgId} className="flex flex-col gap-2">
+                        <span className="text-sm font-medium">
+                          BACKGROUND SHEET PROMPT — {sheet.bgId}{" "}
+                          {bgName(sheet.bgId)}
+                        </span>
+                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                          {sheet.text}
+                        </pre>
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                          <Button
+                            size="lg"
+                            onClick={() =>
+                              onCopy(
+                                sheet.text,
+                                `BACKGROUND SHEET — ${sheet.bgId}`,
+                              )
+                            }
+                          >
+                            <CopyIcon />
+                            Copy Background Sheet Prompt
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
             {episode.scenes.length > 0 && (
               <AccordionItem value="plan">
@@ -847,6 +953,21 @@ function EpisodeView({
                     <p className="text-sm text-muted-foreground">
                       Location: {episode.location}
                     </p>
+                  )}
+                  {episode.backgrounds.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        Background Map:
+                      </p>
+                      {episode.backgrounds.map((background) => (
+                        <p
+                          key={background.id}
+                          className="text-sm leading-relaxed"
+                        >
+                          [{background.id}] {background.text}
+                        </p>
+                      ))}
+                    </div>
                   )}
                   <div className="flex flex-col gap-2">
                     {episode.scenes.map((scene) => (
@@ -879,7 +1000,8 @@ function EpisodeView({
                 <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     Copy the image prompt into Google Flow to generate the
-                    still, then use the video prompt on the same frame.
+                    still, the background prompt for the background plate,
+                    then use the video prompt on the same frame.
                   </p>
                   <div className="flex flex-col gap-4">
                     {prompt.image && (
@@ -889,6 +1011,17 @@ function EpisodeView({
                         </span>
                         <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                           {prompt.image}
+                        </pre>
+                      </div>
+                    )}
+                    {prompt.background && (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium">
+                          BACKGROUND PROMPT{" "}
+                          {String(prompt.number).padStart(2, "0")}
+                        </span>
+                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                          {prompt.background}
                         </pre>
                       </div>
                     )}
@@ -917,6 +1050,21 @@ function EpisodeView({
                       >
                         <CopyIcon />
                         Copy Image Prompt
+                      </Button>
+                    )}
+                    {prompt.background && (
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() =>
+                          onCopy(
+                            prompt.background,
+                            `BACKGROUND PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                          )
+                        }
+                      >
+                        <CopyIcon />
+                        Copy Background Prompt
                       </Button>
                     )}
                     {prompt.video && (
@@ -1193,6 +1341,13 @@ function AppShell() {
   const [characterAge, setCharacterAge] = useState("")
   const [characterAppearance, setCharacterAppearance] = useState("")
   const [characterBehavior, setCharacterBehavior] = useState("")
+  const [backgrounds, setBackgrounds] = useState<StoryBackground[]>([])
+  const [backgroundModalOpen, setBackgroundModalOpen] = useState(false)
+  const [editingBackground, setEditingBackground] =
+    useState<StoryBackground | null>(null)
+  const [backgroundName, setBackgroundName] = useState("")
+  const [backgroundDescription, setBackgroundDescription] = useState("")
+  const [backgroundTimeWeather, setBackgroundTimeWeather] = useState("")
   const [sceneDuration, setSceneDuration] = useState(8)
   const totalDuration = 10 * sceneDuration
   const [ratio, setRatio] = useState("16:9")
@@ -1460,7 +1615,7 @@ function AppShell() {
     const mergedEpisodes = mergeEpisodes(
       episodesRef.current,
       remote.episodes,
-    )
+    ).map(normalizeEpisode)
     const mergedTitles = mergeThreadTitles(
       threadTitlesRef.current,
       remote.threadTitles,
@@ -1743,6 +1898,82 @@ function AppShell() {
       .join("\n")
   }
 
+  function openNewBackground() {
+    setEditingBackground(null)
+    setBackgroundName("")
+    setBackgroundDescription("")
+    setBackgroundTimeWeather("")
+    setBackgroundModalOpen(true)
+  }
+
+  function openEditBackground(background: StoryBackground) {
+    setEditingBackground(background)
+    setBackgroundName(background.name)
+    setBackgroundDescription(background.description)
+    setBackgroundTimeWeather(background.timeWeather)
+    setBackgroundModalOpen(true)
+  }
+
+  function saveBackground() {
+    const name = backgroundName.trim()
+    if (!name) {
+      toast.error("နာမည် ထည့်ပါ", {
+        description: "Background နာမည်က မဖြစ်မနေ လိုတယ်။",
+      })
+      return
+    }
+    const next = {
+      name,
+      description: backgroundDescription.trim(),
+      timeWeather: backgroundTimeWeather.trim(),
+    }
+    if (editingBackground) {
+      setBackgrounds(
+        backgrounds.map((item) =>
+          item.id === editingBackground.id ? { ...item, ...next } : item,
+        ),
+      )
+    } else {
+      setBackgrounds([...backgrounds, { id: `bg-${Date.now()}`, ...next }])
+    }
+    setBackgroundModalOpen(false)
+  }
+
+  function backgroundMiniDescription(background: StoryBackground): string {
+    const text = [background.description, background.timeWeather]
+      .filter(Boolean)
+      .join(" — ")
+    return text.length > 90 ? `${text.slice(0, 90)}…` : text
+  }
+
+  function buildBackgroundLines(list: StoryBackground[]): string {
+    return list
+      .map((background, index) => {
+        const id = `BG_${String(index + 1).padStart(3, "0")}`
+        const parts = [
+          background.name,
+          background.description,
+          background.timeWeather,
+        ]
+          .filter(Boolean)
+          .join(" — ")
+        return `${id} ${parts}`
+      })
+      .join("\n")
+  }
+
+  // Locked backgrounds of a saved episode, for Continue/Rewrite: the
+  // Background Map entries as stored, or the episode's location as BG_001
+  // for episodes made before backgrounds existed.
+  function episodeBackgroundLines(episode: Episode): string {
+    if (episode.backgrounds.length > 0) {
+      return episode.backgrounds
+        .map((background) => `[${background.id}] ${background.text}`)
+        .join("\n")
+    }
+    return episode.location ? `[BG_001] ${episode.location}` : ""
+  }
+
   function buildUserPrompt(
     ideaText: string,
     genreText: string,
@@ -1750,11 +1981,15 @@ function AppShell() {
     duration: number,
     ratioLabel: string,
     characterLines?: string,
+    backgroundLines?: string,
   ): string {
     const charactersBlock = characterLines
       ? `\nLocked characters — use these EXACTLY, same names, ages, looks, outfits and behaviour, as CHAR_001, CHAR_002... in this order. Only add new characters with the NEXT free CHAR IDs if the story needs them:\n${characterLines}`
       : ""
-    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.${charactersBlock}`
+    const backgroundsBlock = backgroundLines
+      ? `\nLocked backgrounds — use these EXACTLY, same names, looks, details and time & weather, as BG_001, BG_002... in this order. Only add new backgrounds with the NEXT free BG IDs if the story needs them:\n${backgroundLines}`
+      : ""
+    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.${charactersBlock}${backgroundsBlock}`
   }
 
   function buildContinuePrompt(
@@ -1769,7 +2004,11 @@ function AppShell() {
           `[${character.id}] ${character.name} (${character.transliteration}) — ${character.description}`,
       )
       .join("\n")
-    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Genre: ${record.genre}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\nPrevious episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
+    const backgroundLines = episodeBackgroundLines(episode)
+    const backgroundsBlock = backgroundLines
+      ? `Backgrounds — reuse exactly, same BG IDs, names and descriptions:\n${backgroundLines}\n`
+      : ""
+    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Genre: ${record.genre}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\n${backgroundsBlock}Previous episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
   }
 
   async function runGenerate(
@@ -1849,6 +2088,7 @@ function AppShell() {
         sceneDuration,
         ratioFull,
         characters.length > 0 ? buildCharacterLines(characters) : undefined,
+        backgrounds.length > 0 ? buildBackgroundLines(backgrounds) : undefined,
       ),
       sceneDuration,
       ratioFull,
@@ -1884,6 +2124,12 @@ function AppShell() {
       `Characters — reuse exactly, same CHAR IDs, outfits and voices:`,
       characterLines,
     ]
+    const rewriteBackgroundLines = episodeBackgroundLines(episode)
+    if (rewriteBackgroundLines) {
+      lines.push(
+        `Backgrounds — reuse exactly, same BG IDs, names and descriptions:\n${rewriteBackgroundLines}`,
+      )
+    }
     if (previous) {
       lines.push(`Previous episode summary: ${previous.storySummary}`)
       lines.push(`Previous episode hook: ${previous.hook}`)
@@ -2430,6 +2676,74 @@ function AppShell() {
                     Add character
                   </Button>
                 </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">Backgrounds</span>
+                  <p className="text-sm text-muted-foreground">
+                    Background ကြိုထည့်ထားရင် AI က အဲဒါတွေကို အတိုင်း
+                    သုံးမယ်။ မထည့်ရင် AI က သူ့ဟာသူ ထွင်မယ်။ ဒီ
+                    thread တစ်ခုစာပဲ။
+                  </p>
+                  {backgrounds.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      {backgrounds.map((background) => {
+                        const mini = backgroundMiniDescription(background)
+                        return (
+                          <Card key={background.id} size="sm">
+                            <CardContent className="flex items-start gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="leading-snug font-medium">
+                                  {background.name}
+                                  {background.timeWeather ? (
+                                    <span className="text-muted-foreground">
+                                      {" "}
+                                      · {background.timeWeather}
+                                    </span>
+                                  ) : null}
+                                </p>
+                                {mini ? (
+                                  <p className="text-sm text-muted-foreground">
+                                    {mini}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Edit background"
+                                onClick={() => openEditBackground(background)}
+                              >
+                                <PencilIcon />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Delete background"
+                                onClick={() =>
+                                  setBackgrounds(
+                                    backgrounds.filter(
+                                      (item) => item.id !== background.id,
+                                    ),
+                                  )
+                                }
+                              >
+                                <Trash2Icon />
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-fit rounded-full"
+                    onClick={openNewBackground}
+                  >
+                    <PlusIcon />
+                    Add background
+                  </Button>
+                </div>
               </CardContent>
             </Card>
             </div>
@@ -2444,6 +2758,7 @@ function AppShell() {
                     setCustomGenre("")
                     setCustomStyle("")
                     setCharacters([])
+                    setBackgrounds([])
                   }}
                 >
                   Clear
@@ -2736,6 +3051,63 @@ function AppShell() {
               render={<Button variant="outline" size="lg">Cancel</Button>}
             />
             <Button size="lg" onClick={saveCharacter}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={backgroundModalOpen} onOpenChange={setBackgroundModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingBackground ? "Background ပြင်မယ်" : "Background ထည့်မယ်"}
+            </DialogTitle>
+            <DialogDescription>
+              နေရာအကြောင်း ထည့်ပါ။ Generate နှိပ်ရင် AI က ဒီ
+              background ကို အတိုင်း သုံးမယ်။
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Name *</span>
+              <Input
+                value={backgroundName}
+                onChange={(event) => setBackgroundName(event.target.value)}
+                placeholder="ဥပမာ — မင်းသမီးရဲ့ အိပ်ခန်း"
+                className="text-base"
+                aria-label="Background name"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Description</span>
+              <Textarea
+                value={backgroundDescription}
+                onChange={(event) =>
+                  setBackgroundDescription(event.target.value)
+                }
+                placeholder="ဥပမာ — ပန်းရောင် နံရံ၊ သစ်သားကုတင်၊ ပြတင်းပေါက်က မနက်ခင်းနေရောင်"
+                className="min-h-20 text-base leading-relaxed"
+                aria-label="Background description"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Time &amp; weather</span>
+              <Input
+                value={backgroundTimeWeather}
+                onChange={(event) =>
+                  setBackgroundTimeWeather(event.target.value)
+                }
+                placeholder="ဥပမာ — မနက်ခင်း၊ နေသာတယ်"
+                className="text-base"
+                aria-label="Background time and weather"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose
+              render={<Button variant="outline" size="lg">Cancel</Button>}
+            />
+            <Button size="lg" onClick={saveBackground}>
               Save
             </Button>
           </DialogFooter>
