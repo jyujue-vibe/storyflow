@@ -15,6 +15,7 @@ import {
   MoonIcon,
   PencilIcon,
   PlusIcon,
+  RefreshCwIcon,
   SettingsIcon,
   ShuffleIcon,
   SparklesIcon,
@@ -1159,6 +1160,8 @@ function AppShell() {
   )
   const [renameThreadId, setRenameThreadId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [rewriteTarget, setRewriteTarget] = useState<Episode | null>(null)
+  const [rewriteNote, setRewriteNote] = useState("")
   // Google account + Drive sync. The access token lives in memory only
   // (never localStorage) — a reload signs out and silently restores.
   const [googleReady, setGoogleReady] = useState(false)
@@ -1240,6 +1243,15 @@ function AppShell() {
       )
     : false
   const deleteThread = threads.find((thread) => thread.id === deleteThreadId) ?? null
+  // Later episodes in the rewrite target's thread — rewriting an episode
+  // deletes these (they continued the old story), so the dialog warns first.
+  const rewriteLater = rewriteTarget
+    ? episodes.filter(
+        (e) =>
+          e.threadId === rewriteTarget.threadId &&
+          e.episodeNumber > rewriteTarget.episodeNumber,
+      )
+    : []
 
   // Keep refs fresh for the Google callbacks (the GIS token callback is
   // created once on mount and would otherwise see stale state).
@@ -1706,6 +1718,105 @@ function AppShell() {
       ratioFull,
       episode.threadId,
     )
+  }
+
+  function buildRewritePrompt(episode: Episode, note: string): string {
+    const characterLines = episode.characters
+      .map(
+        (character) =>
+          `[${character.id}] ${character.name} (${character.transliteration}) — ${character.description}`,
+      )
+      .join("\n")
+    const previous = episodes.find(
+      (e) =>
+        e.threadId === episode.threadId &&
+        e.episodeNumber === episode.episodeNumber - 1,
+    )
+    const lines = [
+      `Episode ${episode.episodeNumber} ကို အသစ်ပြန်ရေးပေးပါ — လုံးဝ ဇာတ်လမ်းအသစ် ဖြစ်ရမယ်။`,
+      `Genre: ${episode.genre}`,
+      `Visual Style: ${episode.visualStyle}`,
+      `Characters — reuse exactly, same CHAR IDs, outfits and voices:`,
+      characterLines,
+    ]
+    if (previous) {
+      lines.push(`Previous episode summary: ${previous.storySummary}`)
+      lines.push(`Previous episode hook: ${previous.hook}`)
+    }
+    lines.push(
+      `Previous version of this episode (do NOT repeat this story — write a different one): ${episode.storySummary}`,
+    )
+    if (note.trim()) {
+      lines.push(`User's rewrite note: ${note.trim()}`)
+    }
+    lines.push(
+      `Scene duration: ${episode.sceneDuration} seconds per scene (10 scenes, ${10 * episode.sceneDuration} seconds total).`,
+    )
+    lines.push(`Aspect ratio: ${episode.aspect}.`)
+    return lines.join("\n")
+  }
+
+  async function runRewrite(episode: Episode, note: string) {
+    if (generating) return
+    if (!savedKey) {
+      setSettingsOpen(true)
+      toast.info("Gemini API key လိုတယ်", {
+        description: "Settings မှာ free key ထည့်ပြီးမှ Rewrite နှိပ်ပါ။",
+      })
+      return
+    }
+    setGenerating(true)
+    setLoadingPhrase(0)
+    setApiError(null)
+    try {
+      const text = await generateEpisodeText(
+        savedKey,
+        buildRewritePrompt(episode, note),
+      )
+      const { episode: fresh, issues } = parseEpisode(text, {
+        sceneDuration: episode.sceneDuration,
+        threadId: episode.threadId,
+      })
+      if (!fresh) {
+        setApiError(
+          "Rewrite ကို parse လုပ်လို့မရဘူး။ အဟောင်း episode အတိုင်း ကျန်ပါတယ် — ပြန်စမ်းပါ။",
+        )
+        toast.error("Rewrite လုပ်လို့မရဘူး", {
+          description: "အဟောင်း episode အတိုင်း ကျန်ပါတယ်။",
+        })
+        return
+      }
+      // Same id/number/thread: the rewrite replaces the old episode in
+      // place, so Drive sync converges on the new version once the
+      // debounced auto-upload pushes it.
+      fresh.id = episode.id
+      fresh.episodeNumber = episode.episodeNumber
+      fresh.threadId = episode.threadId
+      fresh.aspect = episode.aspect
+      const next = episodes
+        .filter(
+          (e) =>
+            !(
+              e.threadId === episode.threadId &&
+              e.episodeNumber > episode.episodeNumber
+            ),
+        )
+        .map((e) => (e.id === episode.id ? fresh : e))
+      persistEpisodes(next)
+      setActiveEpisode(fresh)
+      setParseIssues(issues)
+      toast.success("Episode ပြန်ရေးပြီးပြီ", {
+        description: `${fresh.title} (Episode ${String(fresh.episodeNumber).padStart(2, "0")})`,
+      })
+    } catch (error) {
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : "Rewrite လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။",
+      )
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -2180,6 +2291,16 @@ function AppShell() {
                           <DropdownMenuContent align="start" className="w-auto">
                             <DropdownMenuItem
                               className="whitespace-nowrap"
+                              onClick={() => {
+                                setRewriteTarget(episode)
+                                setRewriteNote("")
+                              }}
+                            >
+                              <RefreshCwIcon />
+                              Rewrite
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="whitespace-nowrap"
                               onClick={() =>
                                 toast.success("Export coming in the next step")
                               }
@@ -2573,6 +2694,74 @@ function AppShell() {
               />
               <Button size="lg" type="submit" disabled={!renameValue.trim()}>
                 Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={rewriteTarget !== null}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setRewriteTarget(null)
+            setRewriteNote("")
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {rewriteTarget
+                ? `Episode ${String(rewriteTarget.episodeNumber).padStart(2, "0")} ပြန်ရေးမယ်`
+                : "Episode ပြန်ရေးမယ်"}
+            </DialogTitle>
+            <DialogDescription>
+              အသစ်စက်စက် ဇာတ်လမ်းနဲ့ အစားထိုးမယ် — အဟောင်း episode
+              က ပြန်မရတော့ဘူး။
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!rewriteTarget) return
+              const target = rewriteTarget
+              const note = rewriteNote
+              setRewriteTarget(null)
+              setRewriteNote("")
+              void runRewrite(target, note)
+            }}
+          >
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">
+                ဘာပြောင်းချင်လဲ (မထည့်လဲ ရတယ်)
+              </span>
+              <Textarea
+                value={rewriteNote}
+                onChange={(event) => setRewriteNote(event.target.value)}
+                placeholder="ဥပမာ — ဗီလိန်ကို ပိုရယ်ရအောင်လုပ်"
+                className="min-h-20 text-base leading-relaxed"
+                aria-label="Rewrite note"
+              />
+            </div>
+            {rewriteLater.length > 0 && (
+              <p className="text-sm text-destructive">
+                သတိ — ဒီ episode ရဲ့ နောက်က{" "}
+                {rewriteLater
+                  .map((e) => `Episode ${String(e.episodeNumber).padStart(2, "0")}`)
+                  .join(", ")}{" "}
+                ကိုပါ ဖျက်မယ် (သူတို့က အဟောင်း story ကို ဆက်ထားလို့ပါ)။
+                ဖျက်ပြီးရင် Continue က နောက် episode အသစ် ပြန်ထုတ်ဖို့
+                ပြန်ပေါ်မယ်။
+              </p>
+            )}
+            <DialogFooter>
+              <DialogClose
+                render={<Button variant="outline" size="lg">Cancel</Button>}
+              />
+              <Button size="lg" type="submit" disabled={busy}>
+                Rewrite
               </Button>
             </DialogFooter>
           </form>
