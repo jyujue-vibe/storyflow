@@ -569,7 +569,7 @@ function SampleView({
                   then use it as the character reference for the scene
                   stills.
                 </p>
-                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                   {SHEET_PROMPT_DAW_MYA}
                 </pre>
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -626,10 +626,10 @@ function SampleView({
                   Copy this into Google Flow to generate the still, then use
                   the video prompt on the same frame.
                 </p>
-                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                   {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
                 </pre>
-                <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                   {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
                 </pre>
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -876,7 +876,7 @@ function EpisodeView({
                           CHARACTER SHEET PROMPT — {sheet.charId}{" "}
                           {charName(sheet.charId)}
                         </span>
-                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                           {sheet.text}
                         </pre>
                         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -919,7 +919,7 @@ function EpisodeView({
                           BACKGROUND SHEET PROMPT — {sheet.bgId}{" "}
                           {bgName(sheet.bgId)}
                         </span>
-                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                           {sheet.text}
                         </pre>
                         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -1009,7 +1009,7 @@ function EpisodeView({
                         <span className="text-sm font-medium">
                           IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
                         </span>
-                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                           {prompt.image}
                         </pre>
                       </div>
@@ -1020,7 +1020,7 @@ function EpisodeView({
                           BACKGROUND PROMPT{" "}
                           {String(prompt.number).padStart(2, "0")}
                         </span>
-                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                           {prompt.background}
                         </pre>
                       </div>
@@ -1030,7 +1030,7 @@ function EpisodeView({
                         <span className="text-sm font-medium">
                           VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
                         </span>
-                        <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                           {prompt.video}
                         </pre>
                       </div>
@@ -2953,7 +2953,7 @@ function AppShell() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <pre className="overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                    <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                       {rawFallback}
                     </pre>
                   </CardContent>
