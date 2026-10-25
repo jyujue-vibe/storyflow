@@ -38,6 +38,7 @@ function mapStatusToMessage(status: number, apiMessage?: string): string {
 export async function generateEpisodeText(
   apiKey: string,
   userPrompt: string,
+  options?: { signal?: AbortSignal },
 ): Promise<string> {
   let response: Response
   try {
@@ -47,12 +48,14 @@ export async function generateEpisodeText(
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
       },
+      signal: options?.signal,
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
         contents: [{ parts: [{ text: userPrompt }] }],
       }),
     })
-  } catch {
+  } catch (error) {
+    if (options?.signal?.aborted) throw error
     throw new Error(
       "အင်တာနက် ချိတ်ဆက်လို့မရဘူး။ Connection ကို စစ်ပြီး ပြန်နှိပ်ပါ။",
     )
