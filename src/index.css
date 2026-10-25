@@ -59,6 +59,10 @@
   src: url("./assets/fonts/MoeTeinPyin-Demo.ttf") format("truetype");
   font-weight: 400;
   font-display: swap;
+  /* Measured 2026-10-25: MoeTeinPyin glyphs render ~75% of Walone's ink
+     height at the same px size (13.5 vs 18.0 @14px, 15.25 vs 20.25 @16px).
+     133% restores Walone's visual size; Latin (Inter Display) untouched. */
+  size-adjust: 133%;
 }
 /* Geist Mono (code/mono font, JJ's pick, OFL) — variable wght 100–900,
    latin subset from Google Fonts, self-hosted like the other fonts. */
