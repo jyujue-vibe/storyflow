@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ThemeProvider, useTheme } from "next-themes"
-import { toast } from "sonner"
+import {
+  AnimatedToastStack,
+  useAnimatedToastStack,
+} from "@/components/motion/animated-toast-stack"
 
 import logoUrl from "./assets/storyflow-logo.svg"
 import {
@@ -13,6 +16,7 @@ import {
   EyeOffIcon,
   FilmIcon,
   MoonIcon,
+  PanelLeftIcon,
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -52,14 +56,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  CenterMorphModal,
+  CenterMorphModalClose,
+  CenterMorphModalContent,
+} from "@/components/motion/center-morph-modal"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,23 +77,21 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+  AnimatedSidebar,
+  AnimatedSidebarContent,
+  AnimatedSidebarFooter,
+  AnimatedSidebarGroup,
+  AnimatedSidebarGroupContent,
+  AnimatedSidebarGroupLabel,
+  AnimatedSidebarHeader,
+  AnimatedSidebarInset,
+  AnimatedSidebarMenu,
+  AnimatedSidebarMenuButton,
+  AnimatedSidebarMenuItem,
+  AnimatedSidebarProvider,
+  AnimatedSidebarTrigger,
+} from "@/components/motion/animated-sidebar"
 import { Textarea } from "@/components/ui/textarea"
-import { Toaster } from "@/components/ui/sonner"
 import { generateEpisodeText } from "@/lib/gemini"
 import {
   createSyncFile,
@@ -454,9 +452,13 @@ function ThemeToggle() {
 function SampleView({
   sceneDuration,
   onCopy,
+  toast,
 }: {
   sceneDuration: number
   onCopy: (text: string, label: string) => void
+  toast: {
+    info: (title: string, options?: { description?: string }) => void
+  }
 }) {
   const totalDuration = 10 * sceneDuration
   return (
@@ -1396,6 +1398,17 @@ function GuideView() {
 }
 
 function AppShell() {
+  const { toasts, showToast, dismissToast } = useAnimatedToastStack()
+  // Sonner-shaped adapter: all 28 call sites keep their exact shape
+  // (toast.success/error/info with an optional { description }).
+  const toast = {
+    success: (title: string, options?: { description?: string }) =>
+      showToast({ title, status: "success", description: options?.description }),
+    error: (title: string, options?: { description?: string }) =>
+      showToast({ title, status: "error", description: options?.description }),
+    info: (title: string, options?: { description?: string }) =>
+      showToast({ title, status: "info", description: options?.description }),
+  }
   const [idea, setIdea] = useState("")
   const [genre, setGenre] = useState("family")
   const [customGenre, setCustomGenre] = useState("")
@@ -2279,59 +2292,68 @@ function AppShell() {
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg">
-                <img
-                  src={logoUrl}
-                  alt="StoryFlow logo"
-                  className="size-8 shrink-0"
-                />
-                <span className="grid flex-1 text-left leading-tight">
-                  <span className="truncate font-medium">StoryFlow</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Make your imagination happens
+    <AnimatedSidebarProvider>
+      <AnimatedSidebar collapsible="offcanvas" panelClassName="bg-sidebar">
+        <AnimatedSidebarHeader>
+          <AnimatedSidebarMenu>
+            <AnimatedSidebarMenuItem>
+              <AnimatedSidebarMenuButton
+                closeOnSelect={false}
+                className="h-12 text-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <img
+                    src={logoUrl}
+                    alt="StoryFlow logo"
+                    className="size-8 shrink-0"
+                  />
+                  <span className="grid flex-1 text-left leading-tight">
+                    <span className="truncate font-medium">StoryFlow</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Make your imagination happens
+                    </span>
                   </span>
                 </span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={activeEpisode === null}
-                  onClick={() => { showEpisode(null); setShowGuide(false) }}
+              </AnimatedSidebarMenuButton>
+            </AnimatedSidebarMenuItem>
+          </AnimatedSidebarMenu>
+        </AnimatedSidebarHeader>
+        <AnimatedSidebarContent>
+          <AnimatedSidebarGroup>
+            <AnimatedSidebarMenu>
+              <AnimatedSidebarMenuItem>
+                <AnimatedSidebarMenuButton
+                  onSelect={() => { showEpisode(null); setShowGuide(false) }}
+                  icon={<PlusIcon className="size-4" />}
                   className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
                 >
-                  <PlusIcon />
                   <span>New story</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroup>
-          <SidebarGroup>
-            <SidebarGroupLabel>My Stories</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
+                </AnimatedSidebarMenuButton>
+              </AnimatedSidebarMenuItem>
+            </AnimatedSidebarMenu>
+          </AnimatedSidebarGroup>
+          <AnimatedSidebarGroup>
+            <AnimatedSidebarGroupLabel>My Stories</AnimatedSidebarGroupLabel>
+            <AnimatedSidebarGroupContent>
+              <AnimatedSidebarMenu>
                 {threads.map((thread) => (
-                  <SidebarMenuItem key={thread.id}>
-                    <SidebarMenuButton
+                  <AnimatedSidebarMenuItem key={thread.id}>
+                    <AnimatedSidebarMenuButton
                       isActive={activeThread?.id === thread.id}
-                      onClick={() => { showThread(thread); setShowGuide(false) }}
+                      onSelect={() => { showThread(thread); setShowGuide(false) }}
+                      icon={<FilmIcon className="size-4" />}
+                      className="pr-8"
                     >
-                      <FilmIcon />
                       <span className="truncate">{thread.title}</span>
-                    </SidebarMenuButton>
+                    </AnimatedSidebarMenuButton>
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
-                          <SidebarMenuAction aria-label="Story actions" />
+                          <button
+                            type="button"
+                            aria-label="Story actions"
+                            className="absolute top-2 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0"
+                          />
                         }
                       >
                         <EllipsisVerticalIcon />
@@ -2367,13 +2389,13 @@ function AppShell() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </SidebarMenuItem>
+                  </AnimatedSidebarMenuItem>
                 ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter>
+              </AnimatedSidebarMenu>
+            </AnimatedSidebarGroupContent>
+          </AnimatedSidebarGroup>
+        </AnimatedSidebarContent>
+        <AnimatedSidebarFooter>
           {googleUser ? (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
@@ -2441,12 +2463,14 @@ function AppShell() {
               ) : null}
             </div>
           )}
-        </SidebarFooter>
-      </Sidebar>
+        </AnimatedSidebarFooter>
+      </AnimatedSidebar>
 
-      <SidebarInset>
+      <AnimatedSidebarInset>
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sm:px-6">
-          <SidebarTrigger className="size-11" />
+          <AnimatedSidebarTrigger className="size-11">
+            <PanelLeftIcon />
+          </AnimatedSidebarTrigger>
           <h1 className="truncate text-base font-medium sm:text-lg">
             {showGuide ? "How to Use" : activeEpisode ? activeEpisode.title : "New story"}
           </h1>
@@ -3038,26 +3062,26 @@ function AppShell() {
                 onOpenSectionChange={setOpenSection}
               />
             ) : (
-            <SampleView sceneDuration={sceneDuration} onCopy={copyPrompt} />
+            <SampleView sceneDuration={sceneDuration} onCopy={copyPrompt} toast={toast} />
             )}
             </div>
             </div>
           </div>
           )}
         </main>
-      </SidebarInset>
+      </AnimatedSidebarInset>
 
-      <Dialog open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
+      <CenterMorphModal open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
+        <CenterMorphModalContent ariaLabel={editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"} ariaDescribedBy="character-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl">
+          <div className="flex flex-col gap-3 pr-10">
+            <h2 className="text-base leading-none font-medium">
               {editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"}
-            </DialogTitle>
-            <DialogDescription>
+            </h2>
+            <p id="character-desc" className="text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
               ဇာတ်ကောင်အကြောင်း ထည့်ပါ။ Generate နှိပ်ရင် AI က ဒီ
               ဇာတ်ကောင်ကို အတိုင်း သုံးမယ်။
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Name *</span>
@@ -3104,27 +3128,25 @@ function AppShell() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <DialogClose
-              render={<Button variant="outline" size="lg">Cancel</Button>}
-            />
+          <div className="-mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-[30px] border-t bg-muted/50 p-6 sm:flex-row sm:justify-end">
+            <CenterMorphModalClose><Button variant="outline" size="lg">Cancel</Button></CenterMorphModalClose>
             <Button size="lg" onClick={saveCharacter}>
               Save
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={backgroundModalOpen} onOpenChange={setBackgroundModalOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
+          </div>
+        </CenterMorphModalContent>
+      </CenterMorphModal>
+      <CenterMorphModal open={backgroundModalOpen} onOpenChange={setBackgroundModalOpen}>
+        <CenterMorphModalContent ariaLabel={editingBackground ? "Background ပြင်မယ်" : "Background ထည့်မယ်"} ariaDescribedBy="background-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl">
+          <div className="flex flex-col gap-3 pr-10">
+            <h2 className="text-base leading-none font-medium">
               {editingBackground ? "Background ပြင်မယ်" : "Background ထည့်မယ်"}
-            </DialogTitle>
-            <DialogDescription>
+            </h2>
+            <p id="background-desc" className="text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
               နေရာအကြောင်း ထည့်ပါ။ Generate နှိပ်ရင် AI က ဒီ
               background ကို အတိုင်း သုံးမယ်။
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Name *</span>
@@ -3161,25 +3183,23 @@ function AppShell() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <DialogClose
-              render={<Button variant="outline" size="lg">Cancel</Button>}
-            />
+          <div className="-mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-[30px] border-t bg-muted/50 p-6 sm:flex-row sm:justify-end">
+            <CenterMorphModalClose><Button variant="outline" size="lg">Cancel</Button></CenterMorphModalClose>
             <Button size="lg" onClick={saveBackground}>
               Save
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Settings · Gemini API key</DialogTitle>
-            <DialogDescription>
+          </div>
+        </CenterMorphModalContent>
+      </CenterMorphModal>
+      <CenterMorphModal open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <CenterMorphModalContent ariaLabel="Settings · Gemini API key" ariaDescribedBy="settings-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-lg">
+          <div className="flex flex-col gap-3 pr-10">
+            <h2 className="text-base leading-none font-medium">Settings · Gemini API key</h2>
+            <p id="settings-desc" className="text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
               Free key ကို Google AI Studio ကနေ ယူပြီး ဒီမှာထည့်ပါ။ Key က
               ဒီ browser ရဲ့ local storage ထဲမှာပဲ နေမယ်။
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <div className="flex flex-col gap-2">
             <label htmlFor="gemini-key" className="text-sm font-medium">
               Gemini API key
@@ -3204,7 +3224,7 @@ function AppShell() {
               </Button>
             </div>
           </div>
-          <DialogFooter>
+          <div className="-mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-[30px] border-t bg-muted/50 p-6 sm:flex-row sm:justify-end">
             {savedKey && (
               <Button
                 variant="outline"
@@ -3223,9 +3243,7 @@ function AppShell() {
                 Remove key
               </Button>
             )}
-            <DialogClose
-              render={<Button variant="outline" size="lg">Cancel</Button>}
-            />
+            <CenterMorphModalClose><Button variant="outline" size="lg">Cancel</Button></CenterMorphModalClose>
             <Button
               size="lg"
               onClick={() => {
@@ -3246,9 +3264,9 @@ function AppShell() {
             >
               Save key
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </CenterMorphModalContent>
+      </CenterMorphModal>
 
       <AlertDialog
         open={deleteTarget !== null}
@@ -3363,20 +3381,20 @@ function AppShell() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog
+      <CenterMorphModal
         open={renameThreadId !== null}
         onOpenChange={(open: boolean) => {
           if (!open) setRenameThreadId(null)
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Story နာမည် ပြောင်းမယ်</DialogTitle>
-            <DialogDescription>
+        <CenterMorphModalContent ariaLabel="Story နာမည် ပြောင်းမယ်" ariaDescribedBy="rename-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-sm">
+          <div className="flex flex-col gap-3 pr-10">
+            <h2 className="text-base leading-none font-medium">Story နာမည် ပြောင်းမယ်</h2>
+            <p id="rename-desc" className="text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
               Sidebar မှာ ပြမယ့် နာမည်ပါ — episode တွေရဲ့ နာမည်က
               မပြောင်းဘူး။
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <form
             className="flex flex-col gap-4"
             onSubmit={(event) => {
@@ -3399,19 +3417,17 @@ function AppShell() {
               className="text-base"
               autoFocus
             />
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" size="lg">Cancel</Button>}
-              />
+            <div className="-mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-[30px] border-t bg-muted/50 p-6 sm:flex-row sm:justify-end">
+              <CenterMorphModalClose><Button variant="outline" size="lg">Cancel</Button></CenterMorphModalClose>
               <Button size="lg" type="submit" disabled={!renameValue.trim()}>
                 Save
               </Button>
-            </DialogFooter>
+            </div>
           </form>
-        </DialogContent>
-      </Dialog>
+        </CenterMorphModalContent>
+      </CenterMorphModal>
 
-      <Dialog
+      <CenterMorphModal
         open={rewriteTarget !== null}
         onOpenChange={(open: boolean) => {
           if (!open) {
@@ -3420,18 +3436,18 @@ function AppShell() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
+        <CenterMorphModalContent ariaLabel={rewriteTarget ? `Episode ${String(rewriteTarget.episodeNumber).padStart(2, "0")} ပြန်ရေးမယ်` : "Episode ပြန်ရေးမယ်"} ariaDescribedBy="rewrite-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-sm">
+          <div className="flex flex-col gap-3 pr-10">
+            <h2 className="text-base leading-none font-medium">
               {rewriteTarget
                 ? `Episode ${String(rewriteTarget.episodeNumber).padStart(2, "0")} ပြန်ရေးမယ်`
                 : "Episode ပြန်ရေးမယ်"}
-            </DialogTitle>
-            <DialogDescription>
+            </h2>
+            <p id="rewrite-desc" className="text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
               အသစ်စက်စက် ဇာတ်လမ်းနဲ့ အစားထိုးမယ် — အဟောင်း episode
               က ပြန်မရတော့ဘူး။
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <form
             className="flex flex-col gap-4"
             onSubmit={(event) => {
@@ -3467,20 +3483,18 @@ function AppShell() {
                 ပြန်ပေါ်မယ်။
               </p>
             )}
-            <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline" size="lg">Cancel</Button>}
-              />
+            <div className="-mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-[30px] border-t bg-muted/50 p-6 sm:flex-row sm:justify-end">
+              <CenterMorphModalClose><Button variant="outline" size="lg">Cancel</Button></CenterMorphModalClose>
               <Button size="lg" type="submit" disabled={busy}>
                 Rewrite
               </Button>
-            </DialogFooter>
+            </div>
           </form>
-        </DialogContent>
-      </Dialog>
+        </CenterMorphModalContent>
+      </CenterMorphModal>
 
-      <Toaster />
-    </SidebarProvider>
+      <AnimatedToastStack toasts={toasts} onDismiss={dismissToast} fixed />
+    </AnimatedSidebarProvider>
   )
 }
 
