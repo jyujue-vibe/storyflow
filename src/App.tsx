@@ -2106,7 +2106,7 @@ function AppShell() {
               </CardContent>
             </Card>
             </div>
-            <div className="shrink-0 border-t bg-background px-4 py-4 sm:px-6">
+            <div className="shrink-0 bg-background px-4 py-4 sm:px-6">
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
