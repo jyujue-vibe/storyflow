@@ -48,12 +48,13 @@ export interface BouncyAccordionProps {
 }
 
 // Rows, cards and scale-corrected text share a transition so their edges
-// stay joined. A close or switch uses the faster non-overshooting spring;
-// opening from all-closed keeps the weighted bounce.
+// stay joined. All toggles use non-overshooting springs so rows never bounce
+// past their target (the old expand bounce made the page judder on open);
+// opening from all-closed keeps the longer duration.
 const EXPAND_TRANSITION: Transition = {
   type: "spring",
   duration: 0.58,
-  bounce: 0.32,
+  bounce: 0,
 };
 
 const COLLAPSE_TRANSITION: Transition = {
@@ -128,6 +129,7 @@ function BouncyAccordionRow({
   onToggle: () => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
 
   useLayoutEffect(() => {
@@ -147,6 +149,32 @@ function BouncyAccordionRow({
       observer.disconnect();
     };
   }, []);
+
+  // A single-open switch used to teleport the page: the section height jumped
+  // instantly, so the browser's scroll clamp moved the viewport by hundreds
+  // of pixels in one frame. The section height now animates (below); as a
+  // safety net, if the clicked trigger still moved, glide the scroll back so
+  // it ends up where it was when clicked.
+  function handleToggle() {
+    const node = triggerRef.current
+    const prevTop = node ? node.getBoundingClientRect().top : null
+    const wasOpen = open
+    onToggle()
+    if (!wasOpen && node && prevTop !== null) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!node.isConnected) return
+          const delta = node.getBoundingClientRect().top - prevTop
+          if (Math.abs(delta) > 4) {
+            window.scrollTo({
+              top: window.scrollY + delta,
+              behavior: reduce ? "auto" : "smooth",
+            })
+          }
+        })
+      })
+    }
+  }
 
   return (
     <motion.div
@@ -176,12 +204,13 @@ function BouncyAccordionRow({
         )}
       >
         <motion.button
+          ref={triggerRef}
           id={triggerId}
           type="button"
           disabled={item.disabled}
           aria-expanded={open}
           aria-controls={contentId}
-          onClick={onToggle}
+          onClick={handleToggle}
           layout={reduce ? false : "position"}
           layoutDependency={layoutDependency}
           transition={{ layout: layoutTransition }}
@@ -224,13 +253,17 @@ function BouncyAccordionRow({
           </motion.span>
         </motion.button>
 
-        <section
+        <motion.section
           id={contentId}
           aria-labelledby={triggerId}
           aria-hidden={!open}
           inert={!open}
-          style={{ height: open && item.description ? contentHeight || "auto" : 0 }}
-          className={cn(classNames?.content)}
+          initial={false}
+          animate={{
+            height: open && item.description ? contentHeight || "auto" : 0,
+          }}
+          transition={reduce ? { duration: 0 } : layoutTransition}
+          className={cn("overflow-hidden", classNames?.content)}
         >
           <motion.div
             ref={contentRef}
@@ -257,7 +290,7 @@ function BouncyAccordionRow({
               {item.description}
             </div>
           </motion.div>
-        </section>
+        </motion.section>
       </motion.div>
     </motion.div>
   );
