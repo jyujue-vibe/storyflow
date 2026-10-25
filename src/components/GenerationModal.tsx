@@ -66,16 +66,16 @@ export function GenerationModal({
           showCloseButton={false}
           className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-md"
         >
-          {/* Gradient-floor-style animated backdrop, bottom-anchored and
-              blurred (pure CSS/Tailwind recreation, no copied effect code).
-              It sits behind the content and clips to the panel's corners. */}
+          {/* Floor-fade backdrop (JJ's pick, 2026-10-25): a static vertical
+              gradient, bottom-anchored. No blobs, so no clipped-blur edges. */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 overflow-hidden"
-          >
-            <div className="absolute -bottom-10 left-1/2 -ml-28 h-56 w-56 rounded-full bg-teal-400/30 blur-3xl motion-safe:animate-[gen-drift_9s_ease-in-out_infinite_alternate]" />
-            <div className="absolute -bottom-6 left-8 h-40 w-40 rounded-full bg-lime-300/30 blur-3xl motion-safe:animate-[gen-drift_12s_ease-in-out_infinite_alternate-reverse]" />
-          </div>
+            style={{
+              background:
+                "linear-gradient(to top, rgba(45,212,191,0.38) 0%, rgba(163,230,53,0.22) 45%, transparent 100%)",
+            }}
+          />
 
           {/* Custom X (mirrors the built-in close button's position/style).
               During generation it asks for confirmation; in the error state
