@@ -93,6 +93,7 @@ import {
 } from "@/components/motion/animated-sidebar"
 import { Textarea } from "@/components/ui/textarea"
 import { generateEpisodeText } from "@/lib/gemini"
+import { generateEpisodeTextOpenAI } from "@/lib/openai"
 import {
   createSyncFile,
   downloadSyncFile,
@@ -264,6 +265,9 @@ const RATIO_OPTIONS = [
 ]
 
 const GEMINI_KEY_STORAGE = "mm3d.geminiKey"
+const OPENAI_KEY_STORAGE = "mm3d.openaiKey"
+const PROVIDER_STORAGE = "mm3d.provider"
+type Provider = "gemini" | "openai"
 const EPISODES_STORAGE = "mm3d.episodes"
 const THREAD_TITLES_STORAGE = "mm3d.threadTitles"
 // Google sign-in + Drive appDataFolder sync. The client ID is a public
@@ -339,6 +343,22 @@ const LOADING_PHRASES = [
 function loadSavedKey(): string | null {
   try {
     return localStorage.getItem(GEMINI_KEY_STORAGE)
+  } catch {
+    return null
+  }
+}
+
+function loadSavedProvider(): Provider {
+  try {
+    return localStorage.getItem(PROVIDER_STORAGE) === "openai" ? "openai" : "gemini"
+  } catch {
+    return "gemini"
+  }
+}
+
+function loadSavedOpenAIKey(): string | null {
+  try {
+    return localStorage.getItem(OPENAI_KEY_STORAGE)
   } catch {
     return null
   }
@@ -1446,7 +1466,12 @@ function AppShell() {
   const [apiKey, setApiKey] = useState("")
   const [showKey, setShowKey] = useState(false)
   const [savedKey, setSavedKey] = useState<string | null>(() => loadSavedKey())
+  const [provider, setProvider] = useState<Provider>(() => loadSavedProvider())
+  const [openAIKey, setOpenAIKey] = useState("")
+  const [savedOpenAIKey, setSavedOpenAIKey] = useState<string | null>(() => loadSavedOpenAIKey())
+  const activeKey = provider === "openai" ? savedOpenAIKey : savedKey
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [providerDraft, setProviderDraft] = useState<Provider>(provider)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null)
   const [threadTitles, setThreadTitles] = useState<Record<string, string>>(() =>
@@ -1855,9 +1880,11 @@ function AppShell() {
   useEffect(() => {
     if (settingsOpen) {
       if (savedKey) setApiKey(savedKey)
+      if (savedOpenAIKey) setOpenAIKey(savedOpenAIKey)
+      setProviderDraft(provider)
       setShowKey(false)
     }
-  }, [settingsOpen, savedKey])
+  }, [settingsOpen, savedKey, savedOpenAIKey, provider])
 
   // Switching episodes re-opens only the details section (EpisodeView used
   // to reset this by remounting; the state now lives here for the fixed
@@ -2198,6 +2225,16 @@ function AppShell() {
     }
   }
 
+  function generateWithProvider(
+    key: string,
+    prompt: string,
+    opts: { signal?: AbortSignal },
+  ) {
+    return provider === "openai"
+      ? generateEpisodeTextOpenAI(key, prompt, opts)
+      : generateEpisodeText(key, prompt, opts)
+  }
+
   async function runGenerate(
     kind: "generate" | "continue",
     userPrompt: string,
@@ -2205,11 +2242,17 @@ function AppShell() {
     aspectLabel: string,
     threadId: string,
   ) {
-    if (!savedKey) {
+    if (!activeKey) {
       setSettingsOpen(true)
-      toast.info("Gemini API key လိုတယ်", {
-        description: "Settings မှာ free key ထည့်ပြီးမှ Generate နှိပ်ပါ။",
-      })
+      toast.info(
+        provider === "openai" ? "OpenAI API key လိုတယ်" : "Gemini API key လိုတယ်",
+        {
+          description:
+            provider === "openai"
+              ? "Settings မှာ OpenAI key ထည့်ပြီးမှ Generate နှိပ်ပါ။"
+              : "Settings မှာ free key ထည့်ပြီးမှ Generate နှိပ်ပါ။",
+        },
+      )
       return
     }
     beginGen(kind, { kind, userPrompt, duration, aspectLabel, threadId })
@@ -2219,7 +2262,7 @@ function AppShell() {
     setRawFallback(null)
     setParseIssues([])
     try {
-      const text = await generateEpisodeText(savedKey, userPrompt, {
+      const text = await generateWithProvider(activeKey, userPrompt, {
         signal: genController.current?.signal,
       })
       if (myRun !== genRunId.current) return
@@ -2349,11 +2392,17 @@ function AppShell() {
 
   async function runRewrite(episode: Episode, note: string) {
     if (generating) return
-    if (!savedKey) {
+    if (!activeKey) {
       setSettingsOpen(true)
-      toast.info("Gemini API key လိုတယ်", {
-        description: "Settings မှာ free key ထည့်ပြီးမှ Rewrite နှိပ်ပါ။",
-      })
+      toast.info(
+        provider === "openai" ? "OpenAI API key လိုတယ်" : "Gemini API key လိုတယ်",
+        {
+          description:
+            provider === "openai"
+              ? "Settings မှာ OpenAI key ထည့်ပြီးမှ Rewrite နှိပ်ပါ။"
+              : "Settings မှာ free key ထည့်ပြီးမှ Rewrite နှိပ်ပါ။",
+        },
+      )
       return
     }
     beginGen("rewrite", { kind: "rewrite", episode, note })
@@ -2361,8 +2410,8 @@ function AppShell() {
     setGenerating(true)
     setLoadingPhrase(0)
     try {
-      const text = await generateEpisodeText(
-        savedKey,
+      const text = await generateWithProvider(
+        activeKey,
         buildRewritePrompt(episode, note),
         { signal: genController.current?.signal },
       )
@@ -2684,13 +2733,13 @@ function AppShell() {
               </EmptyContent>
             </Empty>
 
-            {!savedKey && (
+            {!activeKey && (
             <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
               <AlertIcon />
               <AlertContent>
-              <AlertTitle>Gemini API key မထည့်ရသေးဘူး</AlertTitle>
+              <AlertTitle>{provider === "openai" ? "OpenAI API key မထည့်ရသေးဘူး" : "Gemini API key မထည့်ရသေးဘူး"}</AlertTitle>
               <AlertDescription>
-                Generate လုပ်ဖို့ free Google AI Studio key တစ်ခု လိုတယ်။
+                {provider === "openai" ? "Generate လုပ်ဖို့ OpenAI API key တစ်ခု လိုတယ်။" : "Generate လုပ်ဖို့ free Google AI Studio key တစ်ခု လိုတယ်။"}
                 Key က ဒီ browser ထဲမှာပဲ နေမယ် — code ထဲ၊ server ပေါ်မှာ
                 ဘယ်တော့မှ မရောက်ဘူး။
                 <Button
@@ -3307,25 +3356,44 @@ function AppShell() {
         </CenterMorphModalContent>
       </CenterMorphModal>
       <CenterMorphModal open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <CenterMorphModalContent ariaLabel="Settings · Gemini API key" ariaDescribedBy="settings-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-lg">
+        <CenterMorphModalContent ariaLabel="Settings" ariaDescribedBy="settings-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-lg">
           <div className="flex flex-col gap-3 pr-10">
-            <h2 className="text-base leading-none font-medium">Settings · Gemini API key</h2>
+            <h2 className="text-base leading-none font-medium">Settings</h2>
             <p id="settings-desc" className="text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
-              Free key ကို Google AI Studio ကနေ ယူပြီး ဒီမှာထည့်ပါ။ Key က
-              ဒီ browser ရဲ့ local storage ထဲမှာပဲ နေမယ်။
+              {providerDraft === "openai"
+                ? "capflow အတွက် ဝယ်ထားတဲ့ OpenAI API key ကို ဒီမှာထည့်ပါ။ Key က ဒီ browser ရဲ့ local storage ထဲမှာပဲ နေမယ်။"
+                : "Free key ကို Google AI Studio ကနေ ယူပြီး ဒီမှာထည့်ပါ။ Key က ဒီ browser ရဲ့ local storage ထဲမှာပဲ နေမယ်။"}
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <label htmlFor="gemini-key" className="text-sm font-medium">
-              Gemini API key
+            <label htmlFor="provider" className="text-sm font-medium">
+              Provider
+            </label>
+            <select
+              id="provider"
+              value={providerDraft}
+              onChange={(event) => setProviderDraft(event.target.value as Provider)}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="gemini">Gemini (free)</option>
+              <option value="openai">OpenAI (GPT-6 Luna)</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label htmlFor={providerDraft === "openai" ? "openai-key" : "gemini-key"} className="text-sm font-medium">
+              {providerDraft === "openai" ? "OpenAI API key" : "Gemini API key"}
             </label>
             <div className="flex gap-2">
               <Input
-                id="gemini-key"
+                id={providerDraft === "openai" ? "openai-key" : "gemini-key"}
                 type={showKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                placeholder="AIza…"
+                value={providerDraft === "openai" ? openAIKey : apiKey}
+                onChange={(event) =>
+                  providerDraft === "openai"
+                    ? setOpenAIKey(event.target.value)
+                    : setApiKey(event.target.value)
+                }
+                placeholder={providerDraft === "openai" ? "sk-…" : "AIza…"}
                 className="text-base flex-1"
               />
               <Button
@@ -3340,18 +3408,25 @@ function AppShell() {
             </div>
           </div>
           <div className="-mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-[30px] border-t bg-muted/50 p-6 sm:flex-row sm:justify-end">
-            {savedKey && (
+            {(providerDraft === "openai" ? savedOpenAIKey : savedKey) && (
               <Button
                 variant="outline"
                 size="lg"
                 onClick={() => {
                   try {
-                    localStorage.removeItem(GEMINI_KEY_STORAGE)
+                    localStorage.removeItem(
+                      providerDraft === "openai" ? OPENAI_KEY_STORAGE : GEMINI_KEY_STORAGE,
+                    )
                   } catch {
                     /* storage unavailable — key stays cleared in state */
                   }
-                  setSavedKey(null)
-                  setApiKey("")
+                  if (providerDraft === "openai") {
+                    setSavedOpenAIKey(null)
+                    setOpenAIKey("")
+                  } else {
+                    setSavedKey(null)
+                    setApiKey("")
+                  }
                   toast.success("Key removed")
                 }}
               >
@@ -3362,17 +3437,23 @@ function AppShell() {
             <Button
               size="lg"
               onClick={() => {
-                const key = apiKey.trim()
+                const key = (providerDraft === "openai" ? openAIKey : apiKey).trim()
                 if (!key) {
                   toast.error("API key ထည့်ပါ")
                   return
                 }
                 try {
-                  localStorage.setItem(GEMINI_KEY_STORAGE, key)
+                  localStorage.setItem(
+                    providerDraft === "openai" ? OPENAI_KEY_STORAGE : GEMINI_KEY_STORAGE,
+                    key,
+                  )
+                  localStorage.setItem(PROVIDER_STORAGE, providerDraft)
                 } catch {
                   /* storage unavailable — key stays in memory for the session */
                 }
-                setSavedKey(key)
+                if (providerDraft === "openai") setSavedOpenAIKey(key)
+                else setSavedKey(key)
+                setProvider(providerDraft)
                 setSettingsOpen(false)
                 toast.success("Key saved (this browser only)")
               }}
