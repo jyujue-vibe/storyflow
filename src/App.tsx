@@ -3048,7 +3048,7 @@ function AppShell() {
       </SidebarInset>
 
       <Dialog open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"}
@@ -3115,7 +3115,7 @@ function AppShell() {
         </DialogContent>
       </Dialog>
       <Dialog open={backgroundModalOpen} onOpenChange={setBackgroundModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {editingBackground ? "Background ပြင်မယ်" : "Background ထည့်မယ်"}
