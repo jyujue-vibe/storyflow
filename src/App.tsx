@@ -23,12 +23,7 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { BouncyAccordion } from "@/components/motion/bouncy-accordion"
 import {
   Alert,
   AlertContent,
@@ -414,19 +409,6 @@ function formatTime(totalSeconds: number) {
 
 // Accordion section ids for an episode, in display order. Used for the
 // Expand-all button in the fixed right-panel header.
-function episodeSectionIds(episode: Episode): string[] {
-  return [
-    "details",
-    ...(episode.storySummary ? ["summary"] : []),
-    ...(episode.characters.length > 0 ? ["bible"] : []),
-    ...(episode.sheetPrompts.length > 0 ? ["sheets"] : []),
-    ...(episode.backgroundSheets.length > 0 ? ["background-sheets"] : []),
-    ...(episode.scenes.length > 0 ? ["plan"] : []),
-    ...episode.prompts.map((prompt) => `scene-${prompt.number}`),
-    "continuity",
-    "record",
-  ]
-}
 
 // Sample episode arc for the output preview (UI sample only — real episodes come
 // from Generate). Scene 1 and Scene 10 follow the learned Example A; scenes 2–9
@@ -469,9 +451,6 @@ function ThemeToggle() {
   )
 }
 
-const CARD_PADDING =
-  "[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
-
 function SampleView({
   sceneDuration,
   onCopy,
@@ -494,264 +473,313 @@ function SampleView({
         </p>
       </div>
 
-      <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-        <CardContent>
-          <Accordion multiple defaultValue={["details"]}>
-            <AccordionItem value="details">
-              <AccordionTrigger className="py-4 text-base">
-                ပျောက်သော ထမင်းဆီဆမ်း (Episode 01)
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm text-muted-foreground">
-                  Episode Title &amp; Details
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant="secondary">မိသားစုဟာသ</Badge>
-                  <Badge variant="secondary">Cinematic 3D</Badge>
-                  <Badge variant="secondary">16:9 Landscape</Badge>
-                  <Badge variant="secondary">
-                    10 scenes × {sceneDuration}s = {totalDuration}s
-                  </Badge>
+            <BouncyAccordion
+        defaultValue="details"
+        classNames={{ description: "text-foreground" }}
+        items={[
+          {
+             id: "details",
+             title: (
+              <>
+              ပျောက်သော ထမင်းဆီဆမ်း (Episode 01)
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm text-muted-foreground">
+                Episode Title &amp; Details
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Badge variant="secondary">မိသားစုဟာသ</Badge>
+                <Badge variant="secondary">Cinematic 3D</Badge>
+                <Badge variant="secondary">16:9 Landscape</Badge>
+                <Badge variant="secondary">
+                  10 scenes × {sceneDuration}s = {totalDuration}s
+                </Badge>
+              </div>
+              
+              </>
+            ),
+          },
+          {
+             id: "summary",
+             title: (
+              <>
+              Story Summary
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed">
+                ရွာငယ်လေးက သစ်သားအိမ်မှာ ဒေါ်မြက မနက်ခင်းတိုင်း
+                သားလေး ကျော်ကျော်အတွက် ထမင်းဆီဆမ်း ပြင်ပေးတယ်။
+                တစ်နေ့မနက် စားပွဲပေါ်က ထမင်းဆီဆမ်း ပျောက်သွားတော့
+                ဒေါ်မြက ကျော်ကျော်ကို သံသယဝင်မိတယ်။ ဒါပေမဲ့
+                တရားခံအစစ်က အိမ်နောက်မှာ ထမင်းဆီဆမ်း ခိုးစားနေတဲ့
+                ခွေးကလေး နီနီ ဖြစ်နေတယ်။ အမှန်သိသွားတော့ မိသားစု
+                အားလုံး အတူတကွ ရယ်မောကြတယ်။
+              </p>
+              
+              </>
+            ),
+          },
+          {
+             id: "bible",
+             title: (
+              <>
+              Character Bible
+              
+              </>
+            ),
+             description: (
+              <>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="text-sm font-medium">
+                    [CHAR_001] ဒေါ်မြ (Daw Mya) — 42 နှစ်, မိခင်
+                  </p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    ပါးမှာ သနပ်ခါးဝိုင်း၊ ဆံထုံးထုံး၊ အစိမ်းနုရောင်
+                    ဘလောက်စ်၊ အဆင်ပါသော ထမီ၊ နွေးထွေးသော မြန်မာမိခင်
+                    အသံ။
+                  </p>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="summary">
-              <AccordionTrigger className="py-4 text-base">
-                Story Summary
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm leading-relaxed">
-                  ရွာငယ်လေးက သစ်သားအိမ်မှာ ဒေါ်မြက မနက်ခင်းတိုင်း
-                  သားလေး ကျော်ကျော်အတွက် ထမင်းဆီဆမ်း ပြင်ပေးတယ်။
-                  တစ်နေ့မနက် စားပွဲပေါ်က ထမင်းဆီဆမ်း ပျောက်သွားတော့
-                  ဒေါ်မြက ကျော်ကျော်ကို သံသယဝင်မိတယ်။ ဒါပေမဲ့
-                  တရားခံအစစ်က အိမ်နောက်မှာ ထမင်းဆီဆမ်း ခိုးစားနေတဲ့
-                  ခွေးကလေး နီနီ ဖြစ်နေတယ်။ အမှန်သိသွားတော့ မိသားစု
-                  အားလုံး အတူတကွ ရယ်မောကြတယ်။
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="bible">
-              <AccordionTrigger className="py-4 text-base">
-                Character Bible
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <p className="text-sm font-medium">
-                      [CHAR_001] ဒေါ်မြ (Daw Mya) — 42 နှစ်, မိခင်
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      ပါးမှာ သနပ်ခါးဝိုင်း၊ ဆံထုံးထုံး၊ အစိမ်းနုရောင်
-                      ဘလောက်စ်၊ အဆင်ပါသော ထမီ၊ နွေးထွေးသော မြန်မာမိခင်
-                      အသံ။
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">
-                      [CHAR_002] ကျော်ကျော် (Kyaw Kyaw) — 8 နှစ်, သား
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      ဒေါ်မြ၏သား။
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    [CHAR_002] ကျော်ကျော် (Kyaw Kyaw) — 8 နှစ်, သား
+                  </p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    ဒေါ်မြ၏သား။
+                  </p>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="sheet">
-              <AccordionTrigger className="py-4 text-base">
-                CHARACTER SHEET PROMPT — CHAR_001 Daw Mya
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Paste this into Flow&apos;s image tool first to get the
-                  reference sheet — 4 full-body views + 6 expressions —
-                  then use it as the character reference for the scene
-                  stills.
-                </p>
-                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                  {SHEET_PROMPT_DAW_MYA}
-                </pre>
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    size="lg"
-                    onClick={() =>
-                      onCopy(SHEET_PROMPT_DAW_MYA, "CHARACTER SHEET — CHAR_001")
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Character Sheet Prompt
-                  </Button>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="plan">
-              <AccordionTrigger className="py-4 text-base">
-                Scene Continuity Plan
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Location: သစ်သားအိမ် မီးဖိုဆောင် · မနက်ခင်း —
-                  တစ်ပိုင်းလုံး ဒီနေရာမှာပဲ။
-                </p>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Background Map: [BG_001] သစ်သားအိမ် မီးဖိုဆောင် —
-                  မနက်ခင်း၊ သစ်သားအိမ် မီးဖိုဆောင်အပြည့်အစုံ။
-                </p>
-                <div className="flex flex-col gap-2">
-                  {SAMPLE_SCENES.map((line, index) => {
-                    const start = index * sceneDuration
-                    const end = start + sceneDuration
-                    return (
-                      <div key={line} className="flex gap-3 text-sm">
-                        <span className="shrink-0 text-muted-foreground">
-                          Scene {String(index + 1).padStart(2, "0")} ·{" "}
-                          {formatTime(start)}–{formatTime(end)}
-                        </span>
-                        <span className="leading-relaxed">{line}</span>
-                      </div>
+              </div>
+              
+              </>
+            ),
+          },
+          {
+             id: "sheet",
+             title: (
+              <>
+              CHARACTER SHEET PROMPT — CHAR_001 Daw Mya
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Paste this into Flow&apos;s image tool first to get the
+                reference sheet — 4 full-body views + 6 expressions —
+                then use it as the character reference for the scene
+                stills.
+              </p>
+              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                {SHEET_PROMPT_DAW_MYA}
+              </pre>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  size="lg"
+                  onClick={() =>
+                    onCopy(SHEET_PROMPT_DAW_MYA, "CHARACTER SHEET — CHAR_001")
+                  }
+                >
+                  <CopyIcon />
+                  Copy Character Sheet Prompt
+                </Button>
+              </div>
+              
+              </>
+            ),
+          },
+          {
+             id: "plan",
+             title: (
+              <>
+              Scene Continuity Plan
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Location: သစ်သားအိမ် မီးဖိုဆောင် · မနက်ခင်း —
+                တစ်ပိုင်းလုံး ဒီနေရာမှာပဲ။
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Background Map: [BG_001] သစ်သားအိမ် မီးဖိုဆောင် —
+                မနက်ခင်း၊ သစ်သားအိမ် မီးဖိုဆောင်အပြည့်အစုံ။
+              </p>
+              <div className="flex flex-col gap-2">
+                {SAMPLE_SCENES.map((line, index) => {
+                  const start = index * sceneDuration
+                  const end = start + sceneDuration
+                  return (
+                    <div key={line} className="flex gap-3 text-sm">
+                      <span className="shrink-0 text-muted-foreground">
+                        Scene {String(index + 1).padStart(2, "0")} ·{" "}
+                        {formatTime(start)}–{formatTime(end)}
+                      </span>
+                      <span className="leading-relaxed">{line}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              
+              </>
+            ),
+          },
+          {
+             id: "scene-01",
+             title: (
+              <>
+              IMAGE PROMPT 01 — Opening close-up
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Copy this into Google Flow to generate the still, then use
+                the video prompt on the same frame.
+              </p>
+              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+              </pre>
+              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+              </pre>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() =>
+                    onCopy(
+                      "16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                      "IMAGE PROMPT 01",
                     )
-                  })}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="scene-01">
-              <AccordionTrigger className="py-4 text-base">
-                IMAGE PROMPT 01 — Opening close-up
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Copy this into Google Flow to generate the still, then use
-                  the video prompt on the same frame.
+                  }
+                >
+                  <CopyIcon />
+                  Copy Image Prompt
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() =>
+                    onCopy(
+                      "16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                      "BACKGROUND PROMPT 01",
+                    )
+                  }
+                >
+                  <CopyIcon />
+                  Copy Background Prompt
+                </Button>
+                <Button
+                  size="lg"
+                  onClick={() =>
+                    onCopy(
+                      `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
+                      "VIDEO PROMPT 01",
+                    )
+                  }
+                >
+                  <CopyIcon />
+                  Copy Video Prompt
+                </Button>
+              </div>
+              
+              </>
+            ),
+          },
+          {
+             id: "continuity",
+             title: (
+              <>
+              Continuity Note &amp; Next Episode Hook
+              
+              </>
+            ),
+             description: (
+              <>
+              <div className="flex flex-col gap-2">
+                <p className="text-sm leading-relaxed">
+                  Continuity: ဒေါ်မြ — အစိမ်းနုရောင် ဘလောက်စ်၊ အဆင်ပါသော
+                  ထမီ၊ သနပ်ခါးဝိုင်း၊ ဆံထုံး။ နေရာ — သစ်သားအိမ်
+                  မီးဖိုဆောင်။
                 </p>
-                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                  {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
-                </pre>
-                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                  {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
-                </pre>
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() =>
-                      onCopy(
-                        "16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
-                        "IMAGE PROMPT 01",
-                      )
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Image Prompt
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() =>
-                      onCopy(
-                        "16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
-                        "BACKGROUND PROMPT 01",
-                      )
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Background Prompt
-                  </Button>
-                  <Button
-                    size="lg"
-                    onClick={() =>
-                      onCopy(
-                        `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
-                        "VIDEO PROMPT 01",
-                      )
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Video Prompt
-                  </Button>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="continuity">
-              <AccordionTrigger className="py-4 text-base">
-                Continuity Note &amp; Next Episode Hook
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <div className="flex flex-col gap-2">
-                  <p className="text-sm leading-relaxed">
-                    Continuity: ဒေါ်မြ — အစိမ်းနုရောင် ဘလောက်စ်၊ အဆင်ပါသော
-                    ထမီ၊ သနပ်ခါးဝိုင်း၊ ဆံထုံး။ နေရာ — သစ်သားအိမ်
-                    မီးဖိုဆောင်။
-                  </p>
-                  <p className="text-sm leading-relaxed">
-                    Next Episode Hook (Episode 02, နမူနာ): ကျော်ကျော်နဲ့ နီနီ
-                    မနက်ခင်း စျေးသွားတဲ့ ခရီးမှာ အလွဲအသစ်တစ်ခု
-                    စောင့်နေသည်။
-                  </p>
-                </div>
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
-                    onClick={() =>
-                      toast.info("Episode 2 continue is the next build step", {
-                        description:
-                          "Continue reuses the same characters, outfits and Story Record.",
-                      })
-                    }
-                  >
-                    Continue → Episode 02
-                  </Button>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="record">
-              <AccordionTrigger className="py-4 text-base">
-                Story Record (ဇာတ်လမ်းမှတ်တမ်း)
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
-                  တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
+                <p className="text-sm leading-relaxed">
+                  Next Episode Hook (Episode 02, နမူနာ): ကျော်ကျော်နဲ့ နီနီ
+                  မနက်ခင်း စျေးသွားတဲ့ ခရီးမှာ အလွဲအသစ်တစ်ခု
+                  စောင့်နေသည်။
                 </p>
-                <div className="flex flex-col gap-2 text-sm">
-                  <p>
-                    <span className="font-medium">Story Title: </span>
-                    ပျောက်သော ထမင်းဆီဆမ်း
-                  </p>
-                  <p>
-                    <span className="font-medium">Genre: </span>
-                    မိသားစုဟာသ
-                  </p>
-                  <p>
-                    <span className="font-medium">Central Premise: </span>
-                    မနက်ခင်း ထမင်းဆီဆမ်း ပျောက်ဆုံးမှု
-                  </p>
-                  <p>
-                    <span className="font-medium">Main Conflict: </span>
-                    မိခင်က သားကို သံသယဝင်သည် — တရားခံအစစ်က ခွေးကလေး
-                  </p>
-                  <p>
-                    <span className="font-medium">Key Turning Point: </span>
-                    အိမ်နောက်မှာ နီနီ ထမင်းဆီဆမ်း စားနေသည်ကို တွေ့သည်
-                  </p>
-                  <p>
-                    <span className="font-medium">Ending Type: </span>
-                    နွေးထွေးသော မိသားစု အဆုံး
-                  </p>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </CardContent>
-      </Card>
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                  onClick={() =>
+                    toast.info("Episode 2 continue is the next build step", {
+                      description:
+                        "Continue reuses the same characters, outfits and Story Record.",
+                    })
+                  }
+                >
+                  Continue → Episode 02
+                </Button>
+              </div>
+              
+              </>
+            ),
+          },
+          {
+             id: "record",
+             title: (
+              <>
+              Story Record (ဇာတ်လမ်းမှတ်တမ်း)
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
+                တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
+              </p>
+              <div className="flex flex-col gap-2 text-sm">
+                <p>
+                  <span className="font-medium">Story Title: </span>
+                  ပျောက်သော ထမင်းဆီဆမ်း
+                </p>
+                <p>
+                  <span className="font-medium">Genre: </span>
+                  မိသားစုဟာသ
+                </p>
+                <p>
+                  <span className="font-medium">Central Premise: </span>
+                  မနက်ခင်း ထမင်းဆီဆမ်း ပျောက်ဆုံးမှု
+                </p>
+                <p>
+                  <span className="font-medium">Main Conflict: </span>
+                  မိခင်က သားကို သံသယဝင်သည် — တရားခံအစစ်က ခွေးကလေး
+                </p>
+                <p>
+                  <span className="font-medium">Key Turning Point: </span>
+                  အိမ်နောက်မှာ နီနီ ထမင်းဆီဆမ်း စားနေသည်ကို တွေ့သည်
+                </p>
+                <p>
+                  <span className="font-medium">Ending Type: </span>
+                  နွေးထွေးသော မိသားစု အဆုံး
+                </p>
+              </div>
+              
+              </>
+            ),
+          },
+        ]}
+      />
 
       <p className="text-sm text-muted-foreground">
         Scene 02–10 ရဲ့ prompt တွေလည်း ဒီပုံစံအတိုင်းပဲ —
@@ -767,16 +795,16 @@ function EpisodeView({
   onCopy,
   onContinue,
   hasNextEpisode,
-  openSections,
-  onOpenSectionsChange,
+  openSection,
+  onOpenSectionChange,
 }: {
   episode: Episode
   busy: boolean
   onCopy: (text: string, label: string) => void
   onContinue: (episode: Episode) => void
   hasNextEpisode: boolean
-  openSections: string[]
-  onOpenSectionsChange: (value: string[]) => void
+  openSection: string | null
+  onOpenSectionChange: (value: string | null) => void
 }) {
   const charName = (charId: string) => {
     const found = episode.characters.find((c) => c.id === charId)
@@ -790,392 +818,429 @@ function EpisodeView({
   }
   return (
     <section className="flex flex-col gap-6">
-      <Card className={CARD_PADDING}>
-        <CardContent>
-          <Accordion
-            multiple
-            value={openSections}
-            onValueChange={onOpenSectionsChange}
-          >
-            <AccordionItem value="details">
-              <AccordionTrigger className="py-4 text-base">
-                {episode.title} (Episode{" "}
-                {String(episode.episodeNumber).padStart(2, "0")})
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm text-muted-foreground">
-                  Episode Title &amp; Details
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {episode.genre && (
-                    <Badge variant="secondary">{episode.genre}</Badge>
-                  )}
-                  {episode.visualStyle && (
-                    <Badge variant="secondary">{episode.visualStyle}</Badge>
-                  )}
-                  <Badge variant="secondary">{episode.aspect}</Badge>
-                  <Badge variant="secondary">
-                    10 scenes × {episode.sceneDuration}s ={" "}
-                    {episode.totalSeconds}s
-                  </Badge>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {episode.storySummary && (
-              <AccordionItem value="summary">
-                <AccordionTrigger className="py-4 text-base">
-                  Story Summary
-                </AccordionTrigger>
-                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                  <p className="text-sm leading-relaxed">
-                    {episode.storySummary}
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {episode.characters.length > 0 && (
-              <AccordionItem value="bible">
-                <AccordionTrigger className="py-4 text-base">
-                  Character Bible
-                </AccordionTrigger>
-                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                  <div className="flex flex-col gap-4">
-                    {episode.characters.map((character) => (
-                      <div key={character.id}>
-                        <p className="text-sm font-medium">
-                          [{character.id}] {character.name} (
-                          {character.transliteration})
-                          {character.age !== null && ` — ${character.age} နှစ်`}
-                          {character.role && `, ${character.role}`}
-                        </p>
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {character.description}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {episode.sheetPrompts.length > 0 && (
-              <AccordionItem value="sheets">
-                <AccordionTrigger className="py-4 text-base">
-                  CHARACTER SHEET PROMPT
-                </AccordionTrigger>
-                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Paste these into Flow&apos;s image tool first to get the
-                    reference sheets — 4 full-body views + 6 expressions each —
-                    then use them as the character references for the scene
-                    stills. Each sheet stays its own copyable prompt.
-                  </p>
-                  <div className="flex flex-col gap-4">
-                    {episode.sheetPrompts.map((sheet) => (
-                      <div key={sheet.charId} className="flex flex-col gap-2">
-                        <span className="text-sm font-medium">
-                          CHARACTER SHEET PROMPT — {sheet.charId}{" "}
-                          {charName(sheet.charId)}
-                        </span>
-                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                          {sheet.text}
-                        </pre>
-                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                          <Button
-                            size="lg"
-                            onClick={() =>
-                              onCopy(
-                                sheet.text,
-                                `CHARACTER SHEET — ${sheet.charId}`,
-                              )
-                            }
-                          >
-                            <CopyIcon />
-                            Copy Character Sheet Prompt
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {episode.backgroundSheets.length > 0 && (
-              <AccordionItem value="background-sheets">
-                <AccordionTrigger className="py-4 text-base">
-                  BACKGROUND SHEET PROMPT
-                </AccordionTrigger>
-                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Paste these into Flow&apos;s image tool first to get the
-                    background references — wide view + angles + detail — then
-                    use them for the scene stills and background prompts. Each
-                    sheet stays its own copyable prompt.
-                  </p>
-                  <div className="flex flex-col gap-4">
-                    {episode.backgroundSheets.map((sheet) => (
-                      <div key={sheet.bgId} className="flex flex-col gap-2">
-                        <span className="text-sm font-medium">
-                          BACKGROUND SHEET PROMPT — {sheet.bgId}{" "}
-                          {bgName(sheet.bgId)}
-                        </span>
-                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                          {sheet.text}
-                        </pre>
-                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                          <Button
-                            size="lg"
-                            onClick={() =>
-                              onCopy(
-                                sheet.text,
-                                `BACKGROUND SHEET — ${sheet.bgId}`,
-                              )
-                            }
-                          >
-                            <CopyIcon />
-                            Copy Background Sheet Prompt
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {episode.scenes.length > 0 && (
-              <AccordionItem value="plan">
-                <AccordionTrigger className="py-4 text-base">
-                  Scene Continuity Plan
-                </AccordionTrigger>
-                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                  {episode.location && (
-                    <p className="text-sm text-muted-foreground">
-                      Location: {episode.location}
+            <BouncyAccordion
+        value={openSection}
+        onValueChange={onOpenSectionChange}
+        classNames={{ description: "text-foreground" }}
+        items={[
+          {
+             id: "details",
+             title: (
+              <>
+              {episode.title} (Episode{" "}
+              {String(episode.episodeNumber).padStart(2, "0")})
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm text-muted-foreground">
+                Episode Title &amp; Details
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {episode.genre && (
+                  <Badge variant="secondary">{episode.genre}</Badge>
+                )}
+                {episode.visualStyle && (
+                  <Badge variant="secondary">{episode.visualStyle}</Badge>
+                )}
+                <Badge variant="secondary">{episode.aspect}</Badge>
+                <Badge variant="secondary">
+                  10 scenes × {episode.sceneDuration}s ={" "}
+                  {episode.totalSeconds}s
+                </Badge>
+              </div>
+              
+              </>
+            ),
+          },
+          {
+             id: "summary",
+             title: (
+              <>
+              Story Summary
+                
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed">
+                {episode.storySummary}
+              </p>
+                
+              </>
+            ),
+          },
+          {
+             id: "bible",
+             title: (
+              <>
+              Character Bible
+                
+              </>
+            ),
+             description: (
+              <>
+              <div className="flex flex-col gap-4">
+                {episode.characters.map((character) => (
+                  <div key={character.id}>
+                    <p className="text-sm font-medium">
+                      [{character.id}] {character.name} (
+                      {character.transliteration})
+                      {character.age !== null && ` — ${character.age} နှစ်`}
+                      {character.role && `, ${character.role}`}
                     </p>
-                  )}
-                  {episode.backgrounds.length > 0 && (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {character.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+                
+              </>
+            ),
+          },
+          {
+             id: "sheets",
+             title: (
+              <>
+              CHARACTER SHEET PROMPT
+                
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Paste these into Flow&apos;s image tool first to get the
+                reference sheets — 4 full-body views + 6 expressions each —
+                then use them as the character references for the scene
+                stills. Each sheet stays its own copyable prompt.
+              </p>
+              <div className="flex flex-col gap-4">
+                {episode.sheetPrompts.map((sheet) => (
+                  <div key={sheet.charId} className="flex flex-col gap-2">
+                    <span className="text-sm font-medium">
+                      CHARACTER SHEET PROMPT — {sheet.charId}{" "}
+                      {charName(sheet.charId)}
+                    </span>
+                    <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                      {sheet.text}
+                    </pre>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        size="lg"
+                        onClick={() =>
+                          onCopy(
+                            sheet.text,
+                            `CHARACTER SHEET — ${sheet.charId}`,
+                          )
+                        }
+                      >
+                        <CopyIcon />
+                        Copy Character Sheet Prompt
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+                
+              </>
+            ),
+          },
+          {
+             id: "background-sheets",
+             title: (
+              <>
+              BACKGROUND SHEET PROMPT
+                
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Paste these into Flow&apos;s image tool first to get the
+                background references — wide view + angles + detail — then
+                use them for the scene stills and background prompts. Each
+                sheet stays its own copyable prompt.
+              </p>
+              <div className="flex flex-col gap-4">
+                {episode.backgroundSheets.map((sheet) => (
+                  <div key={sheet.bgId} className="flex flex-col gap-2">
+                    <span className="text-sm font-medium">
+                      BACKGROUND SHEET PROMPT — {sheet.bgId}{" "}
+                      {bgName(sheet.bgId)}
+                    </span>
+                    <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                      {sheet.text}
+                    </pre>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        size="lg"
+                        onClick={() =>
+                          onCopy(
+                            sheet.text,
+                            `BACKGROUND SHEET — ${sheet.bgId}`,
+                          )
+                        }
+                      >
+                        <CopyIcon />
+                        Copy Background Sheet Prompt
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+                
+              </>
+            ),
+          },
+          {
+             id: "plan",
+             title: (
+              <>
+              Scene Continuity Plan
+                
+              </>
+            ),
+             description: (
+              <>
+              {episode.location && (
+                <p className="text-sm text-muted-foreground">
+                  Location: {episode.location}
+                </p>
+              )}
+              {episode.backgrounds.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    Background Map:
+                  </p>
+                  {episode.backgrounds.map((background) => (
+                    <p
+                      key={background.id}
+                      className="text-sm leading-relaxed"
+                    >
+                      [{background.id}] {background.text}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                {episode.scenes.map((scene) => (
+                  <div key={scene.number} className="flex gap-3 text-sm">
+                    <span className="shrink-0 text-muted-foreground">
+                      Scene {String(scene.number).padStart(2, "0")} ·{" "}
+                      {formatTime(scene.start)}–{formatTime(scene.end)}
+                    </span>
+                    <span className="leading-relaxed">{scene.line}</span>
+                  </div>
+                ))}
+              </div>
+                
+              </>
+            ),
+          },
+          ...episode.prompts.map((prompt) => ({
+            id: `scene-${prompt.number}`,
+            title: (
+              <>
+                <span className="flex-1">
+                  Scene {String(prompt.number).padStart(2, "0")}
+                </span>
+                <span className="mr-2 shrink-0">
+                  {formatTime(prompt.start)}–{formatTime(prompt.end)}
+                </span>
+                
+              </>
+            ),
+            description: (
+              <>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Copy the image prompt into Google Flow to generate the
+                  still, the background prompt for the background plate,
+                  then use the video prompt on the same frame.
+                </p>
+                <div className="flex flex-col gap-4">
+                  {prompt.image && (
                     <div className="flex flex-col gap-2">
-                      <p className="text-sm text-muted-foreground">
-                        Background Map:
-                      </p>
-                      {episode.backgrounds.map((background) => (
-                        <p
-                          key={background.id}
-                          className="text-sm leading-relaxed"
-                        >
-                          [{background.id}] {background.text}
-                        </p>
-                      ))}
+                      <span className="text-sm font-medium">
+                        IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
+                      </span>
+                      <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        {prompt.image}
+                      </pre>
                     </div>
                   )}
-                  <div className="flex flex-col gap-2">
-                    {episode.scenes.map((scene) => (
-                      <div key={scene.number} className="flex gap-3 text-sm">
-                        <span className="shrink-0 text-muted-foreground">
-                          Scene {String(scene.number).padStart(2, "0")} ·{" "}
-                          {formatTime(scene.start)}–{formatTime(scene.end)}
-                        </span>
-                        <span className="leading-relaxed">{scene.line}</span>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {episode.prompts.map((prompt) => (
-              <AccordionItem
-                key={prompt.number}
-                value={`scene-${prompt.number}`}
-              >
-                <AccordionTrigger className="py-4 text-base">
-                  <span className="flex-1">
-                    Scene {String(prompt.number).padStart(2, "0")}
-                  </span>
-                  <span className="mr-2 shrink-0">
-                    {formatTime(prompt.start)}–{formatTime(prompt.end)}
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Copy the image prompt into Google Flow to generate the
-                    still, the background prompt for the background plate,
-                    then use the video prompt on the same frame.
-                  </p>
-                  <div className="flex flex-col gap-4">
-                    {prompt.image && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium">
-                          IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
-                        </span>
-                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                          {prompt.image}
-                        </pre>
-                      </div>
-                    )}
-                    {prompt.background && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium">
-                          BACKGROUND PROMPT{" "}
-                          {String(prompt.number).padStart(2, "0")}
-                        </span>
-                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                          {prompt.background}
-                        </pre>
-                      </div>
-                    )}
-                    {prompt.video && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium">
-                          VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
-                        </span>
-                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                          {prompt.video}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    {prompt.image && (
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() =>
-                          onCopy(
-                            prompt.image,
-                            `IMAGE PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                          )
-                        }
-                      >
-                        <CopyIcon />
-                        Copy Image Prompt
-                      </Button>
-                    )}
-                    {prompt.background && (
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() =>
-                          onCopy(
-                            prompt.background,
-                            `BACKGROUND PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                          )
-                        }
-                      >
-                        <CopyIcon />
-                        Copy Background Prompt
-                      </Button>
-                    )}
-                    {prompt.video && (
-                      <Button
-                        size="lg"
-                        onClick={() =>
-                          onCopy(
-                            prompt.video,
-                            `VIDEO PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                          )
-                        }
-                      >
-                        <CopyIcon />
-                        Copy Video Prompt
-                      </Button>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-
-            <AccordionItem value="continuity">
-              <AccordionTrigger className="py-4 text-base">
-                Continuity Note &amp; Next Episode Hook
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <div className="flex flex-col gap-2">
-                  {episode.continuityNote && (
-                    <p className="text-sm leading-relaxed">
-                      Continuity: {episode.continuityNote}
-                    </p>
+                  {prompt.background && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium">
+                        BACKGROUND PROMPT{" "}
+                        {String(prompt.number).padStart(2, "0")}
+                      </span>
+                      <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        {prompt.background}
+                      </pre>
+                    </div>
                   )}
-                  {episode.hook && (
-                    <p className="text-sm leading-relaxed">
-                      Next Episode Hook (Episode{" "}
-                      {String(episode.episodeNumber + 1).padStart(2, "0")}):{" "}
-                      {episode.hook}
-                    </p>
+                  {prompt.video && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium">
+                        VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
+                      </span>
+                      <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                        {prompt.video}
+                      </pre>
+                    </div>
                   )}
                 </div>
-                {!hasNextEpisode && (
-                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  {prompt.image && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() =>
+                        onCopy(
+                          prompt.image,
+                          `IMAGE PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                        )
+                      }
+                    >
+                      <CopyIcon />
+                      Copy Image Prompt
+                    </Button>
+                  )}
+                  {prompt.background && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() =>
+                        onCopy(
+                          prompt.background,
+                          `BACKGROUND PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                        )
+                      }
+                    >
+                      <CopyIcon />
+                      Copy Background Prompt
+                    </Button>
+                  )}
+                  {prompt.video && (
                     <Button
                       size="lg"
-                      disabled={busy}
-                      onClick={() => onContinue(episode)}
-                      className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                      onClick={() =>
+                        onCopy(
+                          prompt.video,
+                          `VIDEO PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                        )
+                      }
                     >
-                      Continue → Episode{" "}
-                      {String(episode.episodeNumber + 1).padStart(2, "0")}
+                      <CopyIcon />
+                      Copy Video Prompt
                     </Button>
-                  </div>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="record">
-              <AccordionTrigger className="py-4 text-base">
-                Story Record (ဇာတ်လမ်းမှတ်တမ်း)
-              </AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-4 [&_p:not(:last-child)]:mb-0">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
-                  တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
-                </p>
-                <div className="flex flex-col gap-2 text-sm">
-                  {episode.storyRecord.title && (
-                    <p>
-                      <span className="font-medium">Story Title: </span>
-                      {episode.storyRecord.title}
-                    </p>
-                  )}
-                  {episode.storyRecord.genre && (
-                    <p>
-                      <span className="font-medium">Genre: </span>
-                      {episode.storyRecord.genre}
-                    </p>
-                  )}
-                  {episode.storyRecord.premise && (
-                    <p>
-                      <span className="font-medium">Central Premise: </span>
-                      {episode.storyRecord.premise}
-                    </p>
-                  )}
-                  {episode.storyRecord.conflict && (
-                    <p>
-                      <span className="font-medium">Main Conflict: </span>
-                      {episode.storyRecord.conflict}
-                    </p>
-                  )}
-                  {episode.storyRecord.turningPoint && (
-                    <p>
-                      <span className="font-medium">Key Turning Point: </span>
-                      {episode.storyRecord.turningPoint}
-                    </p>
-                  )}
-                  {episode.storyRecord.endingType && (
-                    <p>
-                      <span className="font-medium">Ending Type: </span>
-                      {episode.storyRecord.endingType}
-                    </p>
                   )}
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </CardContent>
-      </Card>
+                
+              </>
+            ),
+          })),
+          {
+             id: "continuity",
+             title: (
+              <>
+              Continuity Note &amp; Next Episode Hook
+              
+              </>
+            ),
+             description: (
+              <>
+              <div className="flex flex-col gap-2">
+                {episode.continuityNote && (
+                  <p className="text-sm leading-relaxed">
+                    Continuity: {episode.continuityNote}
+                  </p>
+                )}
+                {episode.hook && (
+                  <p className="text-sm leading-relaxed">
+                    Next Episode Hook (Episode{" "}
+                    {String(episode.episodeNumber + 1).padStart(2, "0")}):{" "}
+                    {episode.hook}
+                  </p>
+                )}
+              </div>
+              {!hasNextEpisode && (
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    size="lg"
+                    disabled={busy}
+                    onClick={() => onContinue(episode)}
+                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                  >
+                    Continue → Episode{" "}
+                    {String(episode.episodeNumber + 1).padStart(2, "0")}
+                  </Button>
+                </div>
+              )}
+              
+              </>
+            ),
+          },
+          {
+             id: "record",
+             title: (
+              <>
+              Story Record (ဇာတ်လမ်းမှတ်တမ်း)
+              
+              </>
+            ),
+             description: (
+              <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Continue လုပ်တိုင်း ဒီမှတ်တမ်းကို ပြန်ပို့မယ် — series
+                တစ်လျှောက် ဇာတ်ကောင် + ဇာတ်လမ်း မလွဲအောင်။
+              </p>
+              <div className="flex flex-col gap-2 text-sm">
+                {episode.storyRecord.title && (
+                  <p>
+                    <span className="font-medium">Story Title: </span>
+                    {episode.storyRecord.title}
+                  </p>
+                )}
+                {episode.storyRecord.genre && (
+                  <p>
+                    <span className="font-medium">Genre: </span>
+                    {episode.storyRecord.genre}
+                  </p>
+                )}
+                {episode.storyRecord.premise && (
+                  <p>
+                    <span className="font-medium">Central Premise: </span>
+                    {episode.storyRecord.premise}
+                  </p>
+                )}
+                {episode.storyRecord.conflict && (
+                  <p>
+                    <span className="font-medium">Main Conflict: </span>
+                    {episode.storyRecord.conflict}
+                  </p>
+                )}
+                {episode.storyRecord.turningPoint && (
+                  <p>
+                    <span className="font-medium">Key Turning Point: </span>
+                    {episode.storyRecord.turningPoint}
+                  </p>
+                )}
+                {episode.storyRecord.endingType && (
+                  <p>
+                    <span className="font-medium">Ending Type: </span>
+                    {episode.storyRecord.endingType}
+                  </p>
+                )}
+              </div>
+              
+              </>
+            ),
+          },
+        ]}
+      />
     </section>
   )
 }
@@ -1396,7 +1461,7 @@ function AppShell() {
   const threadTitlesRef = useRef<Record<string, string>>({})
   const [episodes, setEpisodes] = useState<Episode[]>(() => loadSavedEpisodes())
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null)
-  const [openSections, setOpenSections] = useState<string[]>(["details"])
+  const [openSection, setOpenSection] = useState<string | null>("details")
   const [showGuide, setShowGuide] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [loadingPhrase, setLoadingPhrase] = useState(0)
@@ -1777,7 +1842,7 @@ function AppShell() {
   // to reset this by remounting; the state now lives here for the fixed
   // right-panel header's Expand/Collapse buttons).
   useEffect(() => {
-    setOpenSections(["details"])
+    setOpenSection("details")
   }, [activeEpisode?.id])
 
   function copyPrompt(text: string, label: string) {
@@ -2875,24 +2940,6 @@ function AppShell() {
                   {String(activeEpisode.episodeNumber).padStart(2, "0")}){" "}
                   {activeEpisode.title}
                 </h2>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() =>
-                      setOpenSections(episodeSectionIds(activeEpisode))
-                    }
-                  >
-                    အကုန်ဖွင့်
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => setOpenSections([])}
-                  >
-                    အကုန်ပိတ်
-                  </Button>
-                </div>
               </div>
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
@@ -2987,8 +3034,8 @@ function AppShell() {
                 onCopy={copyPrompt}
                 onContinue={handleContinue}
                 hasNextEpisode={activeHasNext}
-                openSections={openSections}
-                onOpenSectionsChange={setOpenSections}
+                openSection={openSection}
+                onOpenSectionChange={setOpenSection}
               />
             ) : (
             <SampleView sceneDuration={sceneDuration} onCopy={copyPrompt} />
