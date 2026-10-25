@@ -25,9 +25,15 @@ export interface EpisodeScene {
 export interface ScenePrompt {
   number: number
   image: string
+  background: string
   video: string
   start: number
   end: number
+}
+
+export interface EpisodeBackground {
+  id: string
+  text: string
 }
 
 export interface StoryRecord {
@@ -52,6 +58,8 @@ export interface Episode {
   storySummary: string
   characters: EpisodeCharacter[]
   sheetPrompts: { charId: string; text: string }[]
+  backgroundSheets: { bgId: string; text: string }[]
+  backgrounds: EpisodeBackground[]
   location: string
   scenes: EpisodeScene[]
   prompts: ScenePrompt[]
@@ -218,11 +226,59 @@ function parseSheets(
   })
 }
 
+/** Background Map entries: lines that START (after an optional "- ") with a
+ * BG ID. Scene lines start with "Scene", so they never match this anchor. */
+function parseBackgrounds(section: string): EpisodeBackground[] {
+  const entries = [
+    ...section.matchAll(/^\s*(?:-\s*)?\[BG_(\d+)\]\s*(.+)$/gim),
+  ]
+  const seen = new Set<string>()
+  const out: EpisodeBackground[] = []
+  for (const entry of entries) {
+    const id = `BG_${entry[1].padStart(3, "0")}`
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push({ id, text: cleanLine(entry[2]) })
+  }
+  return out
+}
+
+function parseBackgroundSheets(
+  section: string,
+): { bgId: string; text: string }[] {
+  const blocks = [
+    ...section.matchAll(
+      /Create a professional background reference image[\s\S]*?No text, no logo, no watermark\.?/gi,
+    ),
+  ]
+  if (blocks.length > 0) {
+    return blocks.map((block, index) => {
+      const idMatch = block[0].match(/BG_(\d+)/)
+      const bgId = idMatch
+        ? `BG_${idMatch[1].padStart(3, "0")}`
+        : `BG_${String(index + 1).padStart(3, "0")}`
+      return { bgId, text: stripFences(block[0]) }
+    })
+  }
+  // Fallback: one chunk per BG header in the section.
+  const headers = [...section.matchAll(/\[BG_(\d+)\]/g)]
+  if (headers.length === 0) return []
+  return headers.map((header, index) => {
+    const start = header.index ?? 0
+    const end = headers[index + 1]?.index ?? section.length
+    return {
+      bgId: `BG_${header[1].padStart(3, "0")}`,
+      text: stripFences(section.slice(start, end)),
+    }
+  })
+}
+
 function parsePlan(
   section: string,
   duration: number,
-): { location: string; scenes: EpisodeScene[] } {
+): { location: string; scenes: EpisodeScene[]; backgrounds: EpisodeBackground[] } {
   const location = firstLineValue(section, /Location\s*[:：]\s*(.+)/i)
+  const backgrounds = parseBackgrounds(section)
   const lines = section.split("\n")
   const scenes: EpisodeScene[] = []
   for (const line of lines) {
@@ -264,6 +320,7 @@ function parsePlan(
     if (numbered.length > scenes.length) {
       return {
         location,
+        backgrounds,
         scenes: numbered.slice(0, 10).map((text, index) => ({
           number: index + 1,
           line: text,
@@ -273,13 +330,16 @@ function parsePlan(
       }
     }
   }
-  return { location, scenes }
+  return { location, backgrounds, scenes }
 }
 
 function parsePrompts(section: string, duration: number): ScenePrompt[] {
-  const header = /(?:🎨|🎬)?\s*(IMAGE|VIDEO)\s+PROMPT\s+0?(\d{1,2})/gi
+  const header = /(?:🎨|🎬|🏡)?\s*(IMAGE|VIDEO|BACKGROUND)\s+PROMPT\s+0?(\d{1,2})/gi
   const matches = [...section.matchAll(header)]
-  const byNumber = new Map<number, { image: string; video: string }>()
+  const byNumber = new Map<
+    number,
+    { image: string; background: string; video: string }
+  >()
   matches.forEach((match, index) => {
     const number = parseInt(match[2], 10)
     if (number < 1 || number > 10) return
@@ -294,8 +354,14 @@ function parsePrompts(section: string, duration: number): ScenePrompt[] {
         "",
       )
       .trim()
-    const entry = byNumber.get(number) ?? { image: "", video: "" }
-    if (match[1].toUpperCase() === "IMAGE") entry.image = text
+    const entry = byNumber.get(number) ?? {
+      image: "",
+      background: "",
+      video: "",
+    }
+    const kind = match[1].toUpperCase()
+    if (kind === "IMAGE") entry.image = text
+    else if (kind === "BACKGROUND") entry.background = text
     else entry.video = text
     byNumber.set(number, entry)
   })
@@ -309,6 +375,7 @@ function parsePrompts(section: string, duration: number): ScenePrompt[] {
       return {
         number,
         image: entry.image,
+        background: entry.background,
         video: entry.video,
         start: range ? mmssToSeconds(range[1]) : (number - 1) * duration,
         end: range ? mmssToSeconds(range[2]) : number * duration,
@@ -387,11 +454,15 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
   // §3 — Character Bible
   const characters = parseCharacters(bibleSection)
 
-  // §4 — Character Sheet Prompts
+  // §4 — Character Sheet Prompts + Background Sheet Prompts
   const sheetPrompts = parseSheets(sheetSection, characters)
+  const backgroundSheets = parseBackgroundSheets(sheetSection)
 
-  // §5 — Scene Continuity Plan
-  const { location, scenes } = parsePlan(planSection, sceneDuration)
+  // §5 — Scene Continuity Plan + Background Map
+  const { location, backgrounds, scenes } = parsePlan(
+    planSection,
+    sceneDuration,
+  )
 
   // §6 — Scene Prompts
   const prompts = parsePrompts(promptsSection, sceneDuration)
@@ -434,6 +505,23 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
       `Character sheet ${sheetPrompts.length} ခု တွေ့တယ်၊ character ${characters.length} ယောက် ရှိတယ်။`,
     )
   }
+  // Background prompts are new: old outputs have none, so only a partial
+  // set is an issue (0 = old format, still usable).
+  const backgroundCount = prompts.filter((p) => p.background).length
+  if (backgroundCount > 0 && backgroundCount < 10) {
+    issues.push(
+      `Background prompt ${backgroundCount} ခုပဲ တွေ့တယ် (10 ခု လိုတယ်)။`,
+    )
+  }
+  if (
+    backgrounds.length > 0 &&
+    backgroundSheets.length > 0 &&
+    backgroundSheets.length !== backgrounds.length
+  ) {
+    issues.push(
+      `Background sheet ${backgroundSheets.length} ခု တွေ့တယ်၊ Background Map မှာ ${backgrounds.length} ခု ရှိတယ်။`,
+    )
+  }
   if (scenes.some((s) => s.end > 10 * sceneDuration)) {
     issues.push("Scene timestamp တစ်ခုက episode total ထက် ကျော်နေတယ်။")
   }
@@ -467,6 +555,8 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
       storySummary,
       characters,
       sheetPrompts,
+      backgroundSheets,
+      backgrounds,
       location,
       scenes,
       prompts,
