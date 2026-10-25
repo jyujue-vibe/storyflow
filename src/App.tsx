@@ -217,12 +217,14 @@ const GOOGLE_CLIENT_ID =
 const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/drive.appdata openid email profile"
 const GOOGLE_SIGNED_IN_STORAGE = "mm3d.googleSignedIn"
+// Saved on sign-in so silent restores can name the account (see below).
+const GOOGLE_EMAIL_STORAGE = "mm3d.googleEmail"
 // Shown when Google granted sign-in but not Drive access.
 const SCOPE_ERROR_MESSAGE =
   "Drive access မပေးလို့ sync မရဘူး — Sync now နှိပ်ပြီး Google screen မှာ Drive ကို Allow ပေးပါ"
 
 interface GoogleTokenClient {
-  requestAccessToken: (options?: { prompt?: string }) => void
+  requestAccessToken: (options?: { prompt?: string; hint?: string }) => void
 }
 
 interface GoogleAccounts {
@@ -1290,6 +1292,7 @@ function AppShell() {
     consentRequestedRef.current = false
     try {
       localStorage.removeItem(GOOGLE_SIGNED_IN_STORAGE)
+      localStorage.removeItem(GOOGLE_EMAIL_STORAGE)
     } catch {
       /* ignore */
     }
@@ -1305,12 +1308,25 @@ function AppShell() {
     // prompt: "none" — a hidden iframe, no popup at all. An empty prompt
     // was treated as "show UI as needed", which popped the Google login
     // window on every page refresh.
+    // The saved email goes as `hint`: without it, Google cannot pick an
+    // account silently when several are signed in, so the silent request
+    // fails and every refresh drops the connection.
+    if (flow === "signin") {
+      client.requestAccessToken()
+      return
+    }
+    if (flow === "consent") {
+      client.requestAccessToken({ prompt: "consent" })
+      return
+    }
+    let savedEmail: string | null = null
+    try {
+      savedEmail = localStorage.getItem(GOOGLE_EMAIL_STORAGE)
+    } catch {
+      /* ignore */
+    }
     client.requestAccessToken(
-      flow === "signin"
-        ? undefined
-        : flow === "consent"
-          ? { prompt: "consent" }
-          : { prompt: "none" },
+      savedEmail ? { prompt: "none", hint: savedEmail } : { prompt: "none" },
     )
   }
 
@@ -1455,6 +1471,9 @@ function AppShell() {
       setGoogleUser(user)
       try {
         localStorage.setItem(GOOGLE_SIGNED_IN_STORAGE, "1")
+        if (user.email) {
+          localStorage.setItem(GOOGLE_EMAIL_STORAGE, user.email)
+        }
       } catch {
         /* ignore */
       }
