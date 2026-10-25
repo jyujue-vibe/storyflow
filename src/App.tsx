@@ -1766,8 +1766,9 @@ function AppShell() {
                       >
                         <EllipsisVerticalIcon />
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start">
+                      <DropdownMenuContent side="right" align="start" className="w-auto">
                         <DropdownMenuItem
+                          className="whitespace-nowrap"
                           onClick={() => {
                             setRenameThreadId(thread.id)
                             setRenameValue(thread.title)
@@ -1777,6 +1778,7 @@ function AppShell() {
                           Rename
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          className="whitespace-nowrap"
                           onClick={() =>
                             toast.success("Export coming in the next step")
                           }
@@ -1786,6 +1788,7 @@ function AppShell() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
+                          className="whitespace-nowrap"
                           variant="destructive"
                           onClick={() => setDeleteThreadId(thread.id)}
                         >
@@ -2174,8 +2177,9 @@ function AppShell() {
                           >
                             <EllipsisVerticalIcon />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
+                          <DropdownMenuContent align="start" className="w-auto">
                             <DropdownMenuItem
+                              className="whitespace-nowrap"
                               onClick={() =>
                                 toast.success("Export coming in the next step")
                               }
@@ -2185,6 +2189,7 @@ function AppShell() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
+                              className="whitespace-nowrap"
                               variant="destructive"
                               onClick={() => setDeleteTarget(episode.id)}
                             >
