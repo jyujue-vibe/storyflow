@@ -20,7 +20,6 @@ import {
   ShuffleIcon,
   SparklesIcon,
   SunIcon,
-  TriangleAlertIcon,
   Trash2Icon,
 } from "lucide-react"
 
@@ -30,7 +29,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  Alert,
+  AlertContent,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from "@/components/motion/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -113,7 +118,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/motion/tooltip"
 
 // Characters added on the Create form for ONE story thread only —
 // never reused across threads (no library). They are sent to Gemini
@@ -446,20 +451,18 @@ function ThemeToggle() {
   const dark = theme === "dark"
   return (
     <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-9"
-            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={() => setTheme(dark ? "light" : "dark")}
-          />
-        }
-      >
-        {dark ? <SunIcon /> : <MoonIcon />}
+      <TooltipTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-9"
+          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+          onClick={() => setTheme(dark ? "light" : "dark")}
+        >
+          {dark ? <SunIcon /> : <MoonIcon />}
+        </Button>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent arrow>
         <p>{dark ? "Light mode" : "Dark mode"}</p>
       </TooltipContent>
     </Tooltip>
@@ -2470,8 +2473,9 @@ function AppShell() {
             </Empty>
 
             {!savedKey && (
-            <Alert>
-              <TriangleAlertIcon />
+            <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
+              <AlertIcon />
+              <AlertContent>
               <AlertTitle>Gemini API key မထည့်ရသေးဘူး</AlertTitle>
               <AlertDescription>
                 Generate လုပ်ဖို့ free Google AI Studio key တစ်ခု လိုတယ်။
@@ -2485,6 +2489,7 @@ function AppShell() {
                   Settings မှာ ထည့်ပါ
                 </Button>
               </AlertDescription>
+              </AlertContent>
             </Alert>
             )}
 
@@ -2892,10 +2897,12 @@ function AppShell() {
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
             {apiError && (
-              <Alert variant="destructive">
-                <TriangleAlertIcon />
+              <Alert variant="destructive" className="rounded-lg bg-card px-2.5 py-2">
+                <AlertIcon />
+                <AlertContent>
                 <AlertTitle>Generate လုပ်လို့မရဘူး</AlertTitle>
                 <AlertDescription>{apiError}</AlertDescription>
+                </AlertContent>
               </Alert>
             )}
             {generating && (
@@ -2909,8 +2916,9 @@ function AppShell() {
             )}
 
             {parseIssues.length > 0 && activeEpisode && (
-              <Alert>
-                <TriangleAlertIcon />
+              <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
+                <AlertIcon />
+                <AlertContent>
                 <AlertTitle>
                   သတိပြုစရာ ရှိတယ် — ဒါပေမဲ့ episode ရသွားပြီ
                 </AlertTitle>
@@ -2921,6 +2929,7 @@ function AppShell() {
                     ))}
                   </ul>
                 </AlertDescription>
+                </AlertContent>
               </Alert>
             )}
 
@@ -2934,8 +2943,9 @@ function AppShell() {
                   </p>
                 </div>
                 {parseIssues.length > 0 && (
-                  <Alert>
-                    <TriangleAlertIcon />
+                  <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
+                    <AlertIcon />
+                    <AlertContent>
                     <AlertTitle>Parse လုပ်လို့မရဘူး</AlertTitle>
                     <AlertDescription>
                       <ul className="flex flex-col gap-1">
@@ -2944,6 +2954,7 @@ function AppShell() {
                         ))}
                       </ul>
                     </AlertDescription>
+                    </AlertContent>
                   </Alert>
                 )}
                 <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
@@ -3429,7 +3440,7 @@ function AppShell() {
 export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <TooltipProvider>
+      <TooltipProvider delay={0}>
         <AppShell />
       </TooltipProvider>
     </ThemeProvider>
