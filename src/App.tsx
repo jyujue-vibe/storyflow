@@ -115,6 +115,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+// Characters added on the Create form for ONE story thread only —
+// never reused across threads (no library). They are sent to Gemini
+// as locked CHAR_001, CHAR_002... on Generate.
+type StoryCharacter = {
+  id: string
+  name: string
+  age: string
+  appearance: string
+  behavior: string
+}
+
 const GENRE_OPTIONS = [
   { value: "family", label: "မိသားစုဟာသ" },
   { value: "village", label: "ရွာဟာသ" },
@@ -124,6 +135,11 @@ const GENRE_OPTIONS = [
   { value: "animal", label: "Animal" },
   { value: "superhero", label: "Superhero" },
   { value: "detective", label: "Detective" },
+  { value: "fantasy", label: "Fantasy" },
+  { value: "spooky", label: "Spooky Comedy" },
+  { value: "friendship", label: "Friendship" },
+  { value: "heritage", label: "Heritage" },
+  { value: "scifi", label: "Sci-fi" },
   { value: "custom", label: "Custom" },
 ]
 
@@ -187,11 +203,35 @@ const RANDOM_IDEAS: { genre: string; idea: string }[] = [
     genre: "kids",
     idea: "ပန်းခြံထဲမှာ စကားပြောတတ်တဲ့ ငှက်ကလေးနဲ့ မိတ်ဆွေဖြစ်သွားတဲ့ ကလေးမလေးရဲ့ ဇာတ်လမ်း",
   },
+  {
+    genre: "fantasy",
+    idea: "မှော်အိုးလေးတစ်လုံးရလိုက်တဲ့ ကလေးငယ်က ဆုတောင်းတိုင်း ပြောင်းပြန်ဖြစ်နေလို့ ဒုက္ခရောက်တဲ့ မှော်ဆန်း ဇာတ်လမ်း",
+  },
+  {
+    genre: "spooky",
+    idea: "ရွာထဲက အိမ်ဟောင်းကြီးထဲ သရဲရှိတယ်ထင်ပြီး ညဘက်သွားကြည့်မှ ရယ်စရာ အမှန်ပေါ်သွားတဲ့ သရဲဟာသ ဇာတ်လမ်း",
+  },
+  {
+    genre: "friendship",
+    idea: "ကျောင်းမှာ အသစ်ရောက်လာတဲ့ ကလေးငယ်နဲ့ မိတ်ဆွေဖြစ်ဖို့ ကြိုးစားရင်း ပွဲတစ်ခုမှာ အတူတူ အောင်မြင်သွားတဲ့ မိတ်ဆွေ ဇာတ်လမ်း",
+  },
+  {
+    genre: "heritage",
+    idea: "ပုဂံဘုရားကြီးနားမှာ ရှေးဟောင်း ပစ္စည်းလေးတစ်ခု တွေ့လိုက်လို့ သမိုင်းထဲက ဇာတ်လမ်းကို သိသွားတဲ့ မြန်မာ့အမွေ ဇာတ်လမ်း",
+  },
+  {
+    genre: "scifi",
+    idea: "စက်ရုပ်လေးတစ်ရုပ် အိမ်ရောက်လာပြီး အိမ်အလုပ်တွေ ကူရင်း ပျော်စရာ ဒုက္ခတွေ ဖြစ်ကုန်တဲ့ သိပ္ပံဆန်းကြယ် ဇာတ်လမ်း",
+  },
 ]
 
 const STYLE_OPTIONS = [
   { value: "cinematic", label: "Cinematic 3D" },
   { value: "chubby", label: "Chubby · Style 23 & 1" },
+  { value: "anime", label: "2D Anime" },
+  { value: "clay", label: "Clay Stop-motion" },
+  { value: "watercolor", label: "Watercolor Storybook" },
+  { value: "myanmar", label: "Myanmar Traditional" },
   { value: "custom", label: "Custom" },
 ]
 
@@ -1145,6 +1185,14 @@ function AppShell() {
   const [customGenre, setCustomGenre] = useState("")
   const [style, setStyle] = useState("cinematic")
   const [customStyle, setCustomStyle] = useState("")
+  const [characters, setCharacters] = useState<StoryCharacter[]>([])
+  const [characterModalOpen, setCharacterModalOpen] = useState(false)
+  const [editingCharacter, setEditingCharacter] =
+    useState<StoryCharacter | null>(null)
+  const [characterName, setCharacterName] = useState("")
+  const [characterAge, setCharacterAge] = useState("")
+  const [characterAppearance, setCharacterAppearance] = useState("")
+  const [characterBehavior, setCharacterBehavior] = useState("")
   const [sceneDuration, setSceneDuration] = useState(8)
   const totalDuration = 10 * sceneDuration
   const [ratio, setRatio] = useState("16:9")
@@ -1622,14 +1670,91 @@ function AppShell() {
       ? customStyle.trim()
       : (STYLE_OPTIONS.find((option) => option.value === style)?.label ?? "")
 
+  function openNewCharacter() {
+    setEditingCharacter(null)
+    setCharacterName("")
+    setCharacterAge("")
+    setCharacterAppearance("")
+    setCharacterBehavior("")
+    setCharacterModalOpen(true)
+  }
+
+  function openEditCharacter(character: StoryCharacter) {
+    setEditingCharacter(character)
+    setCharacterName(character.name)
+    setCharacterAge(character.age)
+    setCharacterAppearance(character.appearance)
+    setCharacterBehavior(character.behavior)
+    setCharacterModalOpen(true)
+  }
+
+  function saveCharacter() {
+    const name = characterName.trim()
+    if (!name) {
+      toast.error("နာမည် ထည့်ပါ", {
+        description: "Character နာမည်က မဖြစ်မနေ လိုတယ်။",
+      })
+      return
+    }
+    const next = {
+      name,
+      age: characterAge.trim(),
+      appearance: characterAppearance.trim(),
+      behavior: characterBehavior.trim(),
+    }
+    if (editingCharacter) {
+      setCharacters(
+        characters.map((item) =>
+          item.id === editingCharacter.id ? { ...item, ...next } : item,
+        ),
+      )
+    } else {
+      setCharacters([...characters, { id: `char-${Date.now()}`, ...next }])
+    }
+    setCharacterModalOpen(false)
+  }
+
+  function characterMiniDescription(character: StoryCharacter): string {
+    const text = [character.appearance, character.behavior]
+      .filter(Boolean)
+      .join(" — ")
+    return text.length > 90 ? `${text.slice(0, 90)}…` : text
+  }
+
+  function buildCharacterLines(list: StoryCharacter[]): string {
+    return list
+      .map((character, index) => {
+        const id = `CHAR_${String(index + 1).padStart(3, "0")}`
+        const ageText = character.age
+          ? /^\d+$/.test(character.age)
+            ? `${character.age} years old`
+            : character.age
+          : ""
+        const parts = [
+          character.name,
+          ageText,
+          character.appearance,
+          character.behavior,
+        ]
+          .filter(Boolean)
+          .join(" — ")
+        return `${id} ${parts}`
+      })
+      .join("\n")
+  }
+
   function buildUserPrompt(
     ideaText: string,
     genreText: string,
     styleText: string,
     duration: number,
     ratioLabel: string,
+    characterLines?: string,
   ): string {
-    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
+    const charactersBlock = characterLines
+      ? `\nLocked characters — use these EXACTLY, same names, ages, looks, outfits and behaviour, as CHAR_001, CHAR_002... in this order. Only add new characters with the NEXT free CHAR IDs if the story needs them:\n${characterLines}`
+      : ""
+    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.${charactersBlock}`
   }
 
   function buildContinuePrompt(
@@ -1723,6 +1848,7 @@ function AppShell() {
         effectiveStyle,
         sceneDuration,
         ratioFull,
+        characters.length > 0 ? buildCharacterLines(characters) : undefined,
       ),
       sceneDuration,
       ratioFull,
@@ -2236,6 +2362,74 @@ function AppShell() {
                     Square post. Flow ထဲမှာလည်း ဒီ ratio အတိုင်း ရွေးပါ။
                   </p>
                 </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">Characters</span>
+                  <p className="text-sm text-muted-foreground">
+                    ဇာတ်ကောင် ကြိုထည့်ထားရင် AI က အဲဒါတွေကို အတိုင်း
+                    သုံးမယ်။ မထည့်ရင် AI က သူ့ဟာသူ ထွင်မယ်။ ဒီ
+                    thread တစ်ခုစာပဲ။
+                  </p>
+                  {characters.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      {characters.map((character) => {
+                        const mini = characterMiniDescription(character)
+                        return (
+                          <Card key={character.id} size="sm">
+                            <CardContent className="flex items-start gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="leading-snug font-medium">
+                                  {character.name}
+                                  {character.age ? (
+                                    <span className="text-muted-foreground">
+                                      {" "}
+                                      · {character.age}
+                                    </span>
+                                  ) : null}
+                                </p>
+                                {mini ? (
+                                  <p className="text-sm text-muted-foreground">
+                                    {mini}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Edit character"
+                                onClick={() => openEditCharacter(character)}
+                              >
+                                <PencilIcon />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Delete character"
+                                onClick={() =>
+                                  setCharacters(
+                                    characters.filter(
+                                      (item) => item.id !== character.id,
+                                    ),
+                                  )
+                                }
+                              >
+                                <Trash2Icon />
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-fit rounded-full"
+                    onClick={openNewCharacter}
+                  >
+                    <PlusIcon />
+                    Add character
+                  </Button>
+                </div>
               </CardContent>
             </Card>
             </div>
@@ -2249,6 +2443,7 @@ function AppShell() {
                     setIdea("")
                     setCustomGenre("")
                     setCustomStyle("")
+                    setCharacters([])
                   }}
                 >
                   Clear
@@ -2479,6 +2674,73 @@ function AppShell() {
         </main>
       </SidebarInset>
 
+      <Dialog open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"}
+            </DialogTitle>
+            <DialogDescription>
+              ဇာတ်ကောင်အကြောင်း ထည့်ပါ။ Generate နှိပ်ရင် AI က ဒီ
+              ဇာတ်ကောင်ကို အတိုင်း သုံးမယ်။
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Name *</span>
+              <Input
+                value={characterName}
+                onChange={(event) => setCharacterName(event.target.value)}
+                placeholder="ဥပမာ — မောင်မောင်"
+                className="text-base"
+                aria-label="Character name"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Age</span>
+              <Input
+                value={characterAge}
+                onChange={(event) => setCharacterAge(event.target.value)}
+                placeholder="ဥပမာ — ၈"
+                className="text-base"
+                aria-label="Character age"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">
+                Appearances and outfit
+              </span>
+              <Textarea
+                value={characterAppearance}
+                onChange={(event) =>
+                  setCharacterAppearance(event.target.value)
+                }
+                placeholder="ဥပမာ — ဆံပင်တိုတို၊ အနီရောင် တီရှပ်၊ ပုဆိုး"
+                className="min-h-20 text-base leading-relaxed"
+                aria-label="Appearances and outfit"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Behavior</span>
+              <Textarea
+                value={characterBehavior}
+                onChange={(event) => setCharacterBehavior(event.target.value)}
+                placeholder="ဥပမာ — စပ်စု၊ ရဲရင့်၊ စကားများ"
+                className="min-h-20 text-base leading-relaxed"
+                aria-label="Behavior"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose
+              render={<Button variant="outline" size="lg">Cancel</Button>}
+            />
+            <Button size="lg" onClick={saveCharacter}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
