@@ -61,6 +61,13 @@ import {
   CenterMorphModalContent,
 } from "@/components/motion/center-morph-modal"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/motion/select"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -3366,18 +3373,21 @@ function AppShell() {
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <label htmlFor="provider" className="text-sm font-medium">
+            <label className="text-sm font-medium">
               Provider
             </label>
-            <select
-              id="provider"
+            <Select
               value={providerDraft}
-              onChange={(event) => setProviderDraft(event.target.value as Provider)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              onValueChange={(value) => setProviderDraft(value as Provider)}
             >
-              <option value="gemini">Gemini (free)</option>
-              <option value="openai">OpenAI (GPT-6 Luna)</option>
-            </select>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini">Gemini (free)</SelectItem>
+                <SelectItem value="openai">OpenAI (GPT-6 Luna)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-2">
             <label htmlFor={providerDraft === "openai" ? "openai-key" : "gemini-key"} className="text-sm font-medium">
