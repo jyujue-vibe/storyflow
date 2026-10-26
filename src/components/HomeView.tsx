@@ -121,7 +121,7 @@ export function HomeView({
               className="min-w-0 text-left disabled:cursor-not-allowed"
             >
               <Card
-                className={`flex h-full flex-col overflow-hidden p-0 transition-shadow [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)] ${
+                className={`flex h-full flex-col overflow-hidden pt-0 pb-(--card-spacing) transition-shadow [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)] ${
                   selected
                     ? "ring-2 ring-ring"
                     : "hover:shadow-md"
