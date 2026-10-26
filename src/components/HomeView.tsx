@@ -78,8 +78,8 @@ const MODE_CARDS: {
  * Home page (#67): the new-item create page, a full page — NOT a modal.
  * Welcome heading + 4 mode cards on top, the selected mode's settings in
  * the middle, and a bottom-fixed composer (Instruction/Description) with
- * Reset + Enter on the left and Random on the right. Generation starts
- * ONLY on Enter. Same visual language as the rest of the app: Card
+ * Random on the left and Reset + Generate on the right. Generation starts
+ * ONLY on Generate. Same visual language as the rest of the app: Card
  * spacing, lg text buttons, sm chips, 14px button radius.
  */
 export function HomeView({
@@ -121,14 +121,14 @@ export function HomeView({
               className="min-w-0 text-left disabled:cursor-not-allowed"
             >
               <Card
-                className={`h-full overflow-hidden p-0 transition-shadow [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)] ${
+                className={`flex h-full flex-col overflow-hidden p-0 transition-shadow [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)] ${
                   selected
                     ? "ring-2 ring-ring"
                     : "hover:shadow-md"
                 } ${card.disabled ? "opacity-60" : ""}`}
               >
                 <div
-                  className={`flex h-24 items-end bg-gradient-to-b p-4 ${card.gradient}`}
+                  className={`flex h-16 items-end bg-gradient-to-b p-4 ${card.gradient}`}
                 >
                   <span className="text-foreground">{card.icon}</span>
                   {card.disabled ? (
@@ -137,7 +137,7 @@ export function HomeView({
                     </Badge>
                   ) : null}
                 </div>
-                <CardContent className="flex flex-col gap-1">
+                <CardContent className="flex flex-1 flex-col justify-center gap-1.5">
                   <CardTitle className="text-base">{card.title}</CardTitle>
                   <CardDescription>{card.description}</CardDescription>
                 </CardContent>
@@ -152,7 +152,7 @@ export function HomeView({
       <div className="flex min-w-0 flex-col gap-6">{middle}</div>
 
       <div className="sticky bottom-4 z-10">
-        <Card className="shadow-lg [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+        <Card className="bg-card/85 shadow-lg backdrop-blur-md [--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]">
           <CardContent className="flex flex-col gap-3">
             <Textarea
               value={idea}
@@ -166,7 +166,17 @@ export function HomeView({
                 variant="outline"
                 size="lg"
                 disabled={busy}
+                onClick={onRandom}
+              >
+                <ShuffleIcon />
+                Random
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={busy}
                 onClick={onReset}
+                className="ml-auto"
               >
                 <RotateCcwIcon />
                 Reset
@@ -175,19 +185,10 @@ export function HomeView({
                 size="lg"
                 disabled={busy || !idea.trim()}
                 onClick={onEnter}
+                className="px-8"
               >
                 <SparklesIcon />
-                {busy ? "Generating…" : "Enter"}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                disabled={busy}
-                onClick={onRandom}
-                className="ml-auto"
-              >
-                <ShuffleIcon />
-                Random
+                {busy ? "Generating…" : "Generate"}
               </Button>
             </div>
           </CardContent>
