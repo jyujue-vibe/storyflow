@@ -34,11 +34,14 @@ function mapStatusToMessage(status: number, apiMessage?: string): string {
 /**
  * Generate one episode package from Gemini. The key is passed in by the caller
  * (it lives only in the browser's localStorage) and is never logged or stored here.
+ * Callers may override the system instruction (novel/book modes); the default
+ * is the episode builder's instruction, so existing callers behave exactly as
+ * before.
  */
 export async function generateEpisodeText(
   apiKey: string,
   userPrompt: string,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; systemInstruction?: string },
 ): Promise<string> {
   let response: Response
   try {
@@ -50,7 +53,9 @@ export async function generateEpisodeText(
       },
       signal: options?.signal,
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+        system_instruction: {
+          parts: [{ text: options?.systemInstruction ?? SYSTEM_INSTRUCTION }],
+        },
         contents: [{ parts: [{ text: userPrompt }] }],
       }),
     })
