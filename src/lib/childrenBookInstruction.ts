@@ -12,9 +12,10 @@ export const CHILDREN_BOOK_INSTRUCTION = `You are StoryFlow's children book writ
 Page rules (hard):
 - The book is 24 pages: an Intro page, story pages 1-19, then Quiz, Word Helpers, Activities, and Summary pages.
 - The Intro states the purpose of the story and an overview of its themes. It is NOT the start of the narrative.
-- Every story page has EXACTLY 1-3 short sentences of Story Content (maximum 4 lines), with engaging dialogue and sound effects (Whoosh!, Zoom!, Vroom!). Vary line lengths naturally — some pages get just 1-2 punchy lines — so the rhythm feels comfortable and leaves ample space for illustrations.
+- Every story page has Story Content in BOTH languages: a Myanmar version AND an English version of the same 1-3 short sentences (maximum 4 lines each), with engaging dialogue and sound effects (Whoosh!, Zoom!, Vroom!). Vary line lengths naturally — some pages get just 1-2 punchy lines — so the rhythm feels comfortable and leaves ample space for illustrations.
+- Myanmar Story Content must read like natural spoken Burmese for a child: short sentences, warm spoken rhythm, everyday words. Never literal word-for-word translation, never stiff machine-translation style. Technical terms and names may stay in English.
 - Every story page has a Learning Focus of EXACTLY 1 sentence summarizing the core educational takeaway.
-- Every story page has Illustration Ideas (visual composition for artists: framing, characters, actions) and a detailed Image Generation Prompt (character visual descriptions, setting, lighting, mood, cartoon picture book art style).
+- Every story page has Illustration Ideas (visual composition for artists: framing, characters, actions, character visual descriptions, setting, lighting, mood, cartoon picture book art style). There is NO separate image prompt section — Illustration Ideas carries the visuals.
 - Quiz page: 4 multiple-choice questions testing story knowledge, 4 options each (A, B, C, D) plus a complete Answer Key.
 - Word Helpers / Glossary page: kid-friendly definitions of key terms. STRICT RULE: glossary words must come ONLY from the Story Content text — never from Learning Focus or Illustration Ideas.
 - Notes & Fun Activities page: interactive, hands-on activities, drawing prompts, or explorer challenges for young readers.
@@ -25,15 +26,15 @@ Output layout (exact — use these headers, in this order, nothing else):
 TITLE: <book title>
 INTRO: <purpose + theme overview, NOT the story start>
 PAGE 1
-Story Content: <1-3 short sentences>
+Story Content (Myanmar): <1-3 short sentences, natural spoken Burmese>
+Story Content (English): <the same 1-3 short sentences, simple English>
 Learning Focus: <exactly 1 sentence>
 Illustration Ideas: <composition: framing, characters, actions>
-Image Generation Prompt: <detailed AI image prompt>
 PAGE 2
-Story Content: ...
+Story Content (Myanmar): ...
+Story Content (English): ...
 Learning Focus: ...
 Illustration Ideas: ...
-Image Generation Prompt: ...
 (continue through PAGE 19)
 QUIZ
 1. <question>
@@ -140,10 +141,12 @@ export interface CustomBookCharacter {
 
 export interface BookPage {
   number: number
+  /** English Story Content (the legacy field; old books only have this). */
   story: string
+  /** Myanmar Story Content. Empty on old books that only have English. */
+  storyMyanmar: string
   learningFocus: string
   illustrationIdeas: string
-  imagePrompt: string
 }
 
 export interface QuizQuestion {
@@ -175,7 +178,7 @@ export interface ChildBook {
 
 function fixedCharacterBlock(character: FixedBookCharacter): string {
   const extras = character.extras ? `\nExtra rules: ${character.extras}` : ""
-  return `Characters (use EXACTLY — same names, looks, outfits, and behaviour on every page):\n- Lead: ${character.lead}\n- Companion: ${character.companion}\nVisual descriptions (repeat these in every Image Generation Prompt): ${character.visual}\nStory engine: ${character.engine}${extras}`
+  return `Characters (use EXACTLY — same names, looks, outfits, and behaviour on every page):\n- Lead: ${character.lead}\n- Companion: ${character.companion}\nVisual descriptions (use these in every Illustration Ideas block): ${character.visual}\nStory engine: ${character.engine}${extras}`
 }
 
 export function buildFixedBookPrompt(
@@ -222,7 +225,10 @@ function extractLabeledField(block: string, label: string): string {
     .trim()
   const following: string[] = []
   for (let i = start + 1; i < lines.length; i++) {
-    if (/^[A-Za-z][A-Za-z /&]*:/.test(lines[i].trim())) break
+    // Stop at the next labeled line — including parenthesized labels like
+    // "Story Content (English):", which the old pattern missed (it would
+    // swallow the English block into the Myanmar field).
+    if (/^[A-Za-z][A-Za-z /&()]*:/.test(lines[i].trim())) break
     following.push(lines[i])
   }
   return [first, ...following].join("\n").trim()
@@ -274,12 +280,26 @@ export function parseChildBook(text: string): {
     const cleanBody = body
       .split(/^(QUIZ|GLOSSARY|ACTIVITIES|SUMMARY)\b/im)[0]
       .trim()
+    // New bilingual layout first; old single-language books fall back to
+    // the plain "Story Content" label (English). A stray Image Generation
+    // Prompt section from an old output is ignored, never stored.
+    const storyMyanmar = extractLabeledField(
+      cleanBody,
+      "Story Content \\(Myanmar\\)",
+    )
+    const storyEnglish = extractLabeledField(
+      cleanBody,
+      "Story Content \\(English\\)",
+    )
+    const storyLegacy = storyEnglish
+      ? ""
+      : extractLabeledField(cleanBody, "Story Content")
     pages.push({
       number,
-      story: extractLabeledField(cleanBody, "Story Content"),
+      story: storyEnglish || storyLegacy,
+      storyMyanmar,
       learningFocus: extractLabeledField(cleanBody, "Learning Focus"),
       illustrationIdeas: extractLabeledField(cleanBody, "Illustration Ideas"),
-      imagePrompt: extractLabeledField(cleanBody, "Image Generation Prompt"),
     })
   }
   pages.sort((a, b) => a.number - b.number)
@@ -344,7 +364,7 @@ export function parseChildBook(text: string): {
     issues.push(`Story စာမျက်နှာ ${pages.length} ခုပဲ ရတယ် (၁၉ ခု လိုတယ်)။`)
   }
   for (const page of pages) {
-    if (!page.story) issues.push(`Page ${page.number} မှာ Story Content မပါဘူး။`)
+    if (!page.story && !page.storyMyanmar) issues.push(`Page ${page.number} မှာ Story Content မပါဘူး။`)
     if (!page.learningFocus) {
       issues.push(`Page ${page.number} မှာ Learning Focus မပါဘူး။`)
     }
