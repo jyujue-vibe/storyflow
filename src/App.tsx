@@ -115,6 +115,28 @@ import {
 } from "@/lib/drive"
 import { parseEpisode, type Episode } from "@/lib/parse"
 import { GenerationModal, type GenerationKind } from "@/components/GenerationModal"
+import { NovelView } from "@/components/NovelView"
+import { BookView } from "@/components/BookView"
+import {
+  CHILDREN_BOOK_INSTRUCTION,
+  buildCustomBookPrompt,
+  buildFixedBookPrompt,
+  fixedBookCharacter,
+  parseChildBook,
+  type ChildBook,
+  type CustomBookCharacter,
+  type FixedBookCharacterId,
+} from "@/lib/childrenBookInstruction"
+import {
+  NOVEL_INSTRUCTION,
+  buildNovelDraftsPrompt,
+  buildNovelEpisodePrompt,
+  buildStorySoFar,
+  parseNovelDrafts,
+  parseNovelEpisode,
+  type Novel,
+  type NovelDraft,
+} from "@/lib/novelInstruction"
 import {
   buildEpisodeMarkdown,
   buildStoryMarkdown,
@@ -277,6 +299,11 @@ const PROVIDER_STORAGE = "mm3d.provider"
 type Provider = "gemini" | "openai"
 const EPISODES_STORAGE = "mm3d.episodes"
 const THREAD_TITLES_STORAGE = "mm3d.threadTitles"
+// Multi-mode expansion (2026-10-26): novels and children books live under
+// their own keys — the story sidebar keeps story threads only.
+const NOVELS_STORAGE = "mm3d.novels"
+const CHILD_BOOKS_STORAGE = "mm3d.childBooks"
+const CUSTOM_BOOK_CHARS_STORAGE = "mm3d.customBookChars"
 // Google sign-in + Drive appDataFolder sync. The client ID is a public
 // identifier (GIS embeds it in the page) — no secret lives in this app.
 const GOOGLE_CLIENT_ID =
@@ -438,6 +465,55 @@ function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+}
+
+// Multi-mode loaders: novels, children books, and saved custom book
+// characters. Corrupt or foreign data falls back to empty lists.
+function loadSavedNovels(): Novel[] {
+  try {
+    const raw = localStorage.getItem(NOVELS_STORAGE)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return (parsed as Novel[]).filter(
+      (novel) =>
+        novel && typeof novel.id === "string" && Array.isArray(novel.episodes),
+    )
+  } catch {
+    return []
+  }
+}
+
+function loadSavedChildBooks(): ChildBook[] {
+  try {
+    const raw = localStorage.getItem(CHILD_BOOKS_STORAGE)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return (parsed as ChildBook[]).filter(
+      (book) =>
+        book && typeof book.id === "string" && Array.isArray(book.pages),
+    )
+  } catch {
+    return []
+  }
+}
+
+function loadSavedCustomBookChars(): CustomBookCharacter[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_BOOK_CHARS_STORAGE)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return (parsed as CustomBookCharacter[]).filter(
+      (character) =>
+        character &&
+        typeof character.id === "string" &&
+        typeof character.name === "string",
+    )
+  } catch {
+    return []
+  }
 }
 
 // Accordion section ids for an episode, in display order. Used for the
@@ -1514,6 +1590,20 @@ function AppShell() {
   const threadTitlesRef = useRef<Record<string, string>>({})
   const [episodes, setEpisodes] = useState<Episode[]>(() => loadSavedEpisodes())
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null)
+  // Multi-mode expansion (2026-10-26): 'story' is the existing episode
+  // builder; 'novel' and 'book' are the new mode views. Story state above
+  // is untouched by mode switches, so returning to a story restores it.
+  const [mode, setMode] = useState<"story" | "novel" | "book">("story")
+  const [modeModalOpen, setModeModalOpen] = useState(false)
+  const [novels, setNovels] = useState<Novel[]>(() => loadSavedNovels())
+  const [activeNovelId, setActiveNovelId] = useState<string | null>(null)
+  const [novelDrafts, setNovelDrafts] = useState<NovelDraft[]>([])
+  const [books, setBooks] = useState<ChildBook[]>(() => loadSavedChildBooks())
+  const [activeBookId, setActiveBookId] = useState<string | null>(null)
+  const [customBookChars, setCustomBookChars] = useState<
+    CustomBookCharacter[]
+  >(() => loadSavedCustomBookChars())
+  const [bookIssues, setBookIssues] = useState<string[]>([])
   const [openSection, setOpenSection] = useState<string | null>("details")
   const [showGuide, setShowGuide] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -1954,6 +2044,71 @@ function AppShell() {
     }
   }
 
+  // Multi-mode persist helpers — same try/catch shape as persistEpisodes.
+  function persistNovels(next: Novel[]) {
+    setNovels(next)
+    try {
+      localStorage.setItem(NOVELS_STORAGE, JSON.stringify(next))
+    } catch {
+      /* storage full or unavailable — novels stay in memory for the session */
+    }
+  }
+
+  function persistBooks(next: ChildBook[]) {
+    setBooks(next)
+    try {
+      localStorage.setItem(CHILD_BOOKS_STORAGE, JSON.stringify(next))
+    } catch {
+      /* storage full or unavailable — books stay in memory for the session */
+    }
+  }
+
+  function persistCustomBookChars(next: CustomBookCharacter[]) {
+    setCustomBookChars(next)
+    try {
+      localStorage.setItem(CUSTOM_BOOK_CHARS_STORAGE, JSON.stringify(next))
+    } catch {
+      /* storage full or unavailable — characters stay in memory */
+    }
+  }
+
+  const activeNovel = useMemo(
+    () => novels.find((novel) => novel.id === activeNovelId) ?? null,
+    [novels, activeNovelId],
+  )
+
+  const activeBook = useMemo(
+    () => books.find((book) => book.id === activeBookId) ?? null,
+    [books, activeBookId],
+  )
+
+  function selectNovel(id: string | null) {
+    setActiveNovelId(id)
+  }
+
+  function deleteNovel(id: string) {
+    persistNovels(novels.filter((novel) => novel.id !== id))
+    if (activeNovelId === id) setActiveNovelId(null)
+  }
+
+  function selectBook(id: string | null) {
+    setActiveBookId(id)
+    setBookIssues([])
+  }
+
+  function deleteBook(id: string) {
+    persistBooks(books.filter((book) => book.id !== id))
+    if (activeBookId === id) setActiveBookId(null)
+  }
+
+  function saveCustomBookCharacter(
+    character: Omit<CustomBookCharacter, "id">,
+  ): string {
+    const id = `bookchar-${Date.now()}`
+    persistCustomBookChars([...customBookChars, { ...character, id }])
+    return id
+  }
+
   function showEpisode(episode: Episode | null) {
     setActiveEpisode(episode)
     setRawFallback(null)
@@ -2178,6 +2333,22 @@ function AppShell() {
         threadId: string
       }
     | { kind: "rewrite"; episode: Episode; note: string }
+    | { kind: "novel-drafts"; idea: string }
+    | {
+        kind: "novel-episode"
+        novelId: string
+        episodeNumber: number
+        totalEpisodes: number
+        draft: NovelDraft | null
+      }
+    | {
+        kind: "book"
+        fixedId: FixedBookCharacterId | null
+        custom: CustomBookCharacter | null
+        topic: string
+        characterId: string
+        characterName: string
+      }
   const genLastRun = useRef<GenLastRun | null>(null)
 
   function clearGenSlowTimer() {
@@ -2221,6 +2392,12 @@ function AppShell() {
     setGenerating(false)
     if (last.kind === "rewrite") {
       void runRewrite(last.episode, last.note)
+    } else if (last.kind === "novel-drafts") {
+      void runNovelDrafts(last.idea)
+    } else if (last.kind === "novel-episode") {
+      void runNovelEpisode(last)
+    } else if (last.kind === "book") {
+      void runBook(last)
     } else {
       void runGenerate(
         last.kind,
@@ -2235,7 +2412,7 @@ function AppShell() {
   function generateWithProvider(
     key: string,
     prompt: string,
-    opts: { signal?: AbortSignal },
+    opts: { signal?: AbortSignal; systemInstruction?: string },
   ) {
     return provider === "openai"
       ? generateEpisodeTextOpenAI(key, prompt, opts)
@@ -2472,6 +2649,307 @@ function AppShell() {
     }
   }
 
+  // ---- Multi-mode generation (2026-10-26) ----
+  // Same modal flow as episodes (beginGen/abortGen/retryGen, provider
+  // switch, 3-minute message-only, error Retry/Close) with mode-specific
+  // system instructions and parsers. Story generation above is untouched.
+
+  function missingKeyNotice() {
+    setSettingsOpen(true)
+    toast.info(
+      provider === "openai" ? "OpenAI API key လိုတယ်" : "Gemini API key လိုတယ်",
+      {
+        description:
+          provider === "openai"
+            ? "Settings မှာ OpenAI key ထည့်ပြီးမှ Generate နှိပ်ပါ။"
+            : "Settings မှာ free key ထည့်ပြီးမှ Generate နှိပ်ပါ။",
+      },
+    )
+  }
+
+  async function runNovelDrafts(idea: string) {
+    const key = activeKey
+    if (!key) {
+      missingKeyNotice()
+      return
+    }
+    beginGen("novel", { kind: "novel-drafts", idea })
+    const myRun = genRunId.current
+    setGenerating(true)
+    setLoadingPhrase(0)
+    try {
+      const text = await generateWithProvider(
+        key,
+        buildNovelDraftsPrompt(idea),
+        {
+          signal: genController.current?.signal,
+          systemInstruction: NOVEL_INSTRUCTION,
+        },
+      )
+      if (myRun !== genRunId.current) return
+      const drafts = parseNovelDrafts(text)
+      if (drafts.length === 0) {
+        setGenSlow(false)
+        setGenError("Draft တွေ parse လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။")
+        return
+      }
+      setNovelDrafts(drafts)
+      toast.success("Draft တွေ ရပြီ", {
+        description: `${drafts.length} ခု ရွေးစရာ ရှိတယ်။`,
+      })
+    } catch (error) {
+      if (myRun !== genRunId.current) return
+      setGenSlow(false)
+      setGenError(
+        error instanceof Error
+          ? error.message
+          : "Generate လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။",
+      )
+    } finally {
+      if (myRun === genRunId.current) {
+        setGenerating(false)
+        clearGenSlowTimer()
+      }
+    }
+  }
+
+  async function runNovelEpisode(last: {
+    novelId: string
+    episodeNumber: number
+    totalEpisodes: number
+    draft: NovelDraft | null
+  }) {
+    const key = activeKey
+    if (!key) {
+      missingKeyNotice()
+      return
+    }
+    const existing = novels.find((novel) => novel.id === last.novelId)
+    const draft = last.draft ??
+      (existing
+        ? {
+            title: existing.title,
+            premise: existing.premise,
+            characters: existing.characters,
+            tone: existing.tone,
+          }
+        : null)
+    if (!draft) {
+      setGenError("ဝတ္ထု မတွေ့ဘူး။ ပြန်စမ်းပါ။")
+      return
+    }
+    const isContinue = last.episodeNumber > 1
+    beginGen(isContinue ? "continue" : "novel", {
+      kind: "novel-episode",
+      novelId: last.novelId,
+      episodeNumber: last.episodeNumber,
+      totalEpisodes: last.totalEpisodes,
+      draft: last.draft,
+    })
+    const myRun = genRunId.current
+    setGenerating(true)
+    setLoadingPhrase(0)
+    try {
+      const storySoFar = existing ? buildStorySoFar(existing.episodes) : ""
+      const text = await generateWithProvider(
+        key,
+        buildNovelEpisodePrompt(
+          draft,
+          last.episodeNumber,
+          last.totalEpisodes,
+          storySoFar,
+        ),
+        {
+          signal: genController.current?.signal,
+          systemInstruction: NOVEL_INSTRUCTION,
+        },
+      )
+      if (myRun !== genRunId.current) return
+      const episode = parseNovelEpisode(
+        text,
+        draft.title,
+        last.episodeNumber,
+      )
+      if (!episode) {
+        setGenSlow(false)
+        setGenError("Episode ကို parse လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။")
+        return
+      }
+      if (existing) {
+        persistNovels(
+          novels.map((novel) =>
+            novel.id === existing.id
+              ? { ...novel, episodes: [...novel.episodes, episode] }
+              : novel,
+          ),
+        )
+        setActiveNovelId(existing.id)
+      } else {
+        const novel: Novel = {
+          id: last.novelId,
+          title: draft.title,
+          premise: draft.premise,
+          characters: draft.characters,
+          tone: draft.tone,
+          totalEpisodes: last.totalEpisodes,
+          episodes: [episode],
+          createdAt: Date.now(),
+        }
+        persistNovels([novel, ...novels])
+        setActiveNovelId(novel.id)
+      }
+      toast.success("Episode ရပြီ", {
+        description: `${draft.title} (Episode ${String(last.episodeNumber).padStart(2, "0")})`,
+      })
+    } catch (error) {
+      if (myRun !== genRunId.current) return
+      setGenSlow(false)
+      setGenError(
+        error instanceof Error
+          ? error.message
+          : "Generate လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။",
+      )
+    } finally {
+      if (myRun === genRunId.current) {
+        setGenerating(false)
+        clearGenSlowTimer()
+      }
+    }
+  }
+
+  async function runBook(last: {
+    fixedId: FixedBookCharacterId | null
+    custom: CustomBookCharacter | null
+    topic: string
+    characterId: string
+    characterName: string
+  }) {
+    const key = activeKey
+    if (!key) {
+      missingKeyNotice()
+      return
+    }
+    const userPrompt = last.fixedId
+      ? buildFixedBookPrompt(fixedBookCharacter(last.fixedId), last.topic)
+      : last.custom
+        ? buildCustomBookPrompt(last.custom, last.topic)
+        : null
+    if (!userPrompt) {
+      setGenError("Character မတွေ့ဘူး။ ပြန်စမ်းပါ။")
+      return
+    }
+    beginGen("book", {
+      kind: "book",
+      fixedId: last.fixedId,
+      custom: last.custom,
+      topic: last.topic,
+      characterId: last.characterId,
+      characterName: last.characterName,
+    })
+    const myRun = genRunId.current
+    setGenerating(true)
+    setLoadingPhrase(0)
+    try {
+      const text = await generateWithProvider(key, userPrompt, {
+        signal: genController.current?.signal,
+        systemInstruction: CHILDREN_BOOK_INSTRUCTION,
+      })
+      if (myRun !== genRunId.current) return
+      const { book: parsed, issues } = parseChildBook(text)
+      if (!parsed) {
+        setGenSlow(false)
+        setGenError("စာအုပ် parse လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။")
+        return
+      }
+      const book: ChildBook = {
+        id: `book-${Date.now()}`,
+        title: parsed.title || last.topic,
+        characterId: last.characterId,
+        characterName: last.characterName,
+        topic: last.topic,
+        intro: parsed.intro,
+        pages: parsed.pages,
+        quiz: parsed.quiz,
+        glossary: parsed.glossary,
+        activities: parsed.activities,
+        whatWeLearned: parsed.whatWeLearned,
+        skillsDeveloped: parsed.skillsDeveloped,
+        createdAt: Date.now(),
+      }
+      persistBooks([book, ...books])
+      setActiveBookId(book.id)
+      setBookIssues(issues)
+      toast.success("စာအုပ် ရပြီ", {
+        description: book.title,
+      })
+    } catch (error) {
+      if (myRun !== genRunId.current) return
+      setGenSlow(false)
+      setGenError(
+        error instanceof Error
+          ? error.message
+          : "Generate လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။",
+      )
+    } finally {
+      if (myRun === genRunId.current) {
+        setGenerating(false)
+        clearGenSlowTimer()
+      }
+    }
+  }
+
+  function handleGenerateNovelDrafts(idea: string) {
+    void runNovelDrafts(idea)
+  }
+
+  function handleGenerateNovelEpisode1(
+    draft: NovelDraft,
+    totalEpisodes: number,
+  ) {
+    void runNovelEpisode({
+      novelId: `novel-${Date.now()}`,
+      episodeNumber: 1,
+      totalEpisodes,
+      draft,
+    })
+  }
+
+  function handleContinueNovel(novel: Novel) {
+    void runNovelEpisode({
+      novelId: novel.id,
+      episodeNumber: novel.episodes.length + 1,
+      totalEpisodes: novel.totalEpisodes,
+      draft: null,
+    })
+  }
+
+  function handleGenerateFixedBook(
+    characterId: FixedBookCharacterId,
+    topic: string,
+  ) {
+    const character = fixedBookCharacter(characterId)
+    void runBook({
+      fixedId: characterId,
+      custom: null,
+      topic,
+      characterId: character.id,
+      characterName: character.shortLabel,
+    })
+  }
+
+  function handleGenerateCustomBook(
+    character: CustomBookCharacter,
+    outline: string,
+  ) {
+    void runBook({
+      fixedId: null,
+      custom: character,
+      topic: outline,
+      characterId: character.id,
+      characterName: character.name,
+    })
+  }
+
   return (
     <AnimatedSidebarProvider>
       <AnimatedSidebar collapsible="offcanvas" panelClassName="bg-sidebar">
@@ -2504,7 +2982,9 @@ function AppShell() {
             <AnimatedSidebarMenu>
               <AnimatedSidebarMenuItem>
                 <AnimatedSidebarMenuButton
-                  onSelect={() => { showEpisode(null); setShowGuide(false) }}
+                  onSelect={() => {
+                    setModeModalOpen(true)
+                  }}
                   icon={<PlusIcon className="size-4" />}
                   className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
                 >
@@ -2521,7 +3001,7 @@ function AppShell() {
                   <AnimatedSidebarMenuItem key={thread.id}>
                     <AnimatedSidebarMenuButton
                       isActive={activeThread?.id === thread.id}
-                      onSelect={() => { showThread(thread); setShowGuide(false) }}
+                      onSelect={() => { setMode("story"); showThread(thread); setShowGuide(false) }}
                       icon={<FilmIcon className="size-4" />}
                       className="pr-8"
                     >
@@ -2651,8 +3131,17 @@ function AppShell() {
             <PanelLeftIcon />
           </AnimatedSidebarTrigger>
           <h1 className="truncate text-base font-medium sm:text-lg">
-            {showGuide ? "How to Use" : activeEpisode ? activeEpisode.title : "New story"}
+            {showGuide
+              ? "How to Use"
+              : mode === "novel"
+                ? (activeNovel?.title ?? "Novel Writer")
+                : mode === "book"
+                  ? (activeBook?.title ?? "Children Book Writer")
+                  : activeEpisode
+                    ? activeEpisode.title
+                    : "New story"}
           </h1>
+          {mode === "story" && (
           <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
             {(activeEpisode
               ? activeEpisode.aspect.split(" ")[0]
@@ -2660,6 +3149,7 @@ function AppShell() {
             · 10 scenes ×{" "}
             {activeEpisode ? activeEpisode.sceneDuration : sceneDuration}s
           </Badge>
+          )}
           <div className="ml-auto flex items-center gap-2">
             <Button
               variant={showGuide ? "default" : "outline"}
@@ -2688,6 +3178,32 @@ function AppShell() {
             <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto">
               <GuideView />
             </div>
+          ) : mode === "novel" ? (
+            <NovelView
+              busy={busy}
+              novels={novels}
+              activeNovel={activeNovel}
+              drafts={novelDrafts}
+              onSelectNovel={selectNovel}
+              onDeleteNovel={deleteNovel}
+              onGenerateDrafts={handleGenerateNovelDrafts}
+              onGenerateEpisode1={handleGenerateNovelEpisode1}
+              onContinueNovel={handleContinueNovel}
+            />
+          ) : mode === "book" ? (
+            <BookView
+              busy={busy}
+              books={books}
+              activeBook={activeBook}
+              customCharacters={customBookChars}
+              bookIssues={bookIssues}
+              onSelectBook={selectBook}
+              onDeleteBook={deleteBook}
+              onSaveCustomCharacter={saveCustomBookCharacter}
+              onGenerateFixedBook={handleGenerateFixedBook}
+              onGenerateCustomBook={handleGenerateCustomBook}
+              toast={toast}
+            />
           ) : (
           <div className="grid grid-cols-1 gap-8">
             {activeEpisode === null && (
@@ -3241,6 +3757,76 @@ function AppShell() {
         onClose={() => setGenError(null)}
         onRetry={retryGen}
       />
+
+      {/* Mode selector: every "New story" entry opens this. Story Creator
+          is the existing create view; Novel/Book open their new views;
+          Documentary Explainer is listed but disabled (built later). */}
+      <CenterMorphModal open={modeModalOpen} onOpenChange={setModeModalOpen}>
+        <CenterMorphModalContent ariaLabel="Mode ရွေးပါ" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-md">
+          <div className="flex flex-col gap-3 pr-10">
+            <h2 className="text-base leading-none font-medium">
+              ဘာလုပ်ချင်လဲ?
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Mode တစ်ခုရွေးပါ။
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              className="justify-start"
+              onClick={() => {
+                setMode("story")
+                showEpisode(null)
+                setShowGuide(false)
+                setModeModalOpen(false)
+              }}
+            >
+              <ClapperboardIcon />
+              Story Creator
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="justify-start"
+              onClick={() => {
+                setMode("novel")
+                setShowGuide(false)
+                setModeModalOpen(false)
+              }}
+            >
+              <BookOpenIcon />
+              Novel Writer
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="justify-start"
+              onClick={() => {
+                setMode("book")
+                setShowGuide(false)
+                setModeModalOpen(false)
+              }}
+            >
+              <SparklesIcon />
+              Children Book Writer
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="justify-start"
+              disabled
+            >
+              <FilmIcon />
+              Documentary Explainer
+              <Badge variant="secondary" className="ml-auto">
+                Coming soon
+              </Badge>
+            </Button>
+          </div>
+        </CenterMorphModalContent>
+      </CenterMorphModal>
 
       <CenterMorphModal open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
         <CenterMorphModalContent ariaLabel={editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"} ariaDescribedBy="character-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl">
