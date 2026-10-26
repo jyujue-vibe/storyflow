@@ -1,0 +1,677 @@
+import { useState } from "react"
+import { SparklesIcon, Trash2Icon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Alert,
+  AlertContent,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from "@/components/motion/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  CenterMorphModal,
+  CenterMorphModalContent,
+} from "@/components/motion/center-morph-modal"
+import {
+  FIXED_BOOK_CHARACTERS,
+  fixedBookCharacter,
+  type ChildBook,
+  type CustomBookCharacter,
+  type FixedBookCharacterId,
+} from "@/lib/childrenBookInstruction"
+
+interface BookViewProps {
+  busy: boolean
+  books: ChildBook[]
+  activeBook: ChildBook | null
+  customCharacters: CustomBookCharacter[]
+  bookIssues: string[]
+  onSelectBook: (id: string | null) => void
+  onDeleteBook: (id: string) => void
+  onSaveCustomCharacter: (
+    character: Omit<CustomBookCharacter, "id">,
+  ) => string
+  onGenerateFixedBook: (
+    characterId: FixedBookCharacterId,
+    topic: string,
+  ) => void
+  onGenerateCustomBook: (
+    character: CustomBookCharacter,
+    outline: string,
+  ) => void
+  toast: {
+    error: (title: string, options?: { description?: string }) => void
+  }
+}
+
+const PROMPT_PRE_CLASS =
+  "font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6"
+
+/**
+ * Children Book Writer view. Same visual language as the story creator:
+ * Card spacing, lg text buttons, sm chips, CenterMorphModal for the custom
+ * character setup (mirroring the story creator's character modal), footer
+ * buttons bottom-right. Custom setup is a modal; the outline stays inline.
+ */
+export function BookView({
+  busy,
+  books,
+  activeBook,
+  customCharacters,
+  bookIssues,
+  onSelectBook,
+  onDeleteBook,
+  onSaveCustomCharacter,
+  onGenerateFixedBook,
+  onGenerateCustomBook,
+  toast,
+}: BookViewProps) {
+  const [picked, setPicked] = useState<string>("JJ")
+  const [topic, setTopic] = useState("")
+  const [outline, setOutline] = useState("")
+  const [setupOpen, setSetupOpen] = useState(false)
+  const [setupName, setSetupName] = useState("")
+  const [setupGenre, setSetupGenre] = useState("")
+  const [setupAge, setSetupAge] = useState("")
+  const [setupAppearance, setSetupAppearance] = useState("")
+  const [setupBehavior, setSetupBehavior] = useState("")
+  const [setupCompanionName, setSetupCompanionName] = useState("")
+  const [setupCompanionDescription, setSetupCompanionDescription] =
+    useState("")
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+
+  const pickedFixed = FIXED_BOOK_CHARACTERS.find(
+    (character) => character.id === picked,
+  )
+  const pickedCustom = customCharacters.find(
+    (character) => character.id === picked,
+  )
+  const isNewCustom = picked === "new-custom"
+
+  function saveSetup() {
+    const name = setupName.trim()
+    if (!name) {
+      toast.error("နာမည် ထည့်ပါ", {
+        description: "Character နာမည်က မဖြစ်မနေ လိုတယ်။",
+      })
+      return
+    }
+    const id = onSaveCustomCharacter({
+      name,
+      genre: setupGenre.trim(),
+      age: setupAge.trim(),
+      appearance: setupAppearance.trim(),
+      behavior: setupBehavior.trim(),
+      companionName: setupCompanionName.trim(),
+      companionDescription: setupCompanionDescription.trim(),
+    })
+    setSetupName("")
+    setSetupGenre("")
+    setSetupAge("")
+    setSetupAppearance("")
+    setSetupBehavior("")
+    setSetupCompanionName("")
+    setSetupCompanionDescription("")
+    setSetupOpen(false)
+    setPicked(id)
+  }
+
+  if (activeBook) {
+    return (
+      <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{activeBook.characterName}</Badge>
+            <Badge variant="secondary">24 pages</Badge>
+          </div>
+          <h2 className="text-lg font-medium">{activeBook.title}</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {activeBook.topic}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => onSelectBook(null)}
+            >
+              New book
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setDeleteTarget(activeBook.id)}
+            >
+              <Trash2Icon />
+              Delete book
+            </Button>
+          </div>
+        </div>
+
+        {bookIssues.length > 0 && (
+          <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
+            <AlertIcon />
+            <AlertContent>
+              <AlertTitle>
+                သတိပြုစရာ ရှိတယ် — ဒါပေမဲ့ စာအုပ် ရသွားပြီ
+              </AlertTitle>
+              <AlertDescription>
+                <ul className="flex flex-col gap-1">
+                  {bookIssues.map((issue) => (
+                    <li key={issue}>• {issue}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </AlertContent>
+          </Alert>
+        )}
+
+        <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+          <CardHeader>
+            <CardTitle className="text-base">Intro</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed sm:text-base">
+              {activeBook.intro}
+            </p>
+          </CardContent>
+        </Card>
+
+        {activeBook.pages.map((page) => (
+          <Card
+            key={page.number}
+            className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+          >
+            <CardHeader>
+              <CardTitle className="text-base">Page {page.number}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Story Content</span>
+                <p className="text-sm leading-relaxed sm:text-base">
+                  {page.story}
+                </p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Learning Focus</span>
+                <p className="text-sm leading-relaxed">
+                  {page.learningFocus}
+                </p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Illustration Ideas</span>
+                <p className="text-sm leading-relaxed">
+                  {page.illustrationIdeas}
+                </p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">
+                  Image Generation Prompt
+                </span>
+                <pre className={PROMPT_PRE_CLASS}>{page.imagePrompt}</pre>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {activeBook.quiz.length > 0 && (
+          <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+            <CardHeader>
+              <CardTitle className="text-base">Page 20 — Quiz</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {activeBook.quiz.map((item, index) => (
+                <div key={index} className="flex flex-col gap-1">
+                  <p className="text-sm font-medium">
+                    {index + 1}. {item.question}
+                  </p>
+                  <ul className="flex flex-col gap-1">
+                    {item.options.map((option, optionIndex) => (
+                      <li
+                        key={optionIndex}
+                        className="text-sm text-muted-foreground"
+                      >
+                        {String.fromCharCode(65 + optionIndex)}. {option}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Answer key</span>
+                <p className="text-sm text-muted-foreground">
+                  {activeBook.quiz
+                    .map((item, index) => `${index + 1} — ${item.answer || "?"}`)
+                    .join(" · ")}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeBook.glossary.length > 0 && (
+          <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+            <CardHeader>
+              <CardTitle className="text-base">
+                Page 21 — Word Helpers
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              {activeBook.glossary.map((entry, index) => (
+                <p key={index} className="text-sm leading-relaxed">
+                  <span className="font-medium">{entry.word}</span> —{" "}
+                  {entry.definition}
+                </p>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {activeBook.activities.length > 0 && (
+          <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+            <CardHeader>
+              <CardTitle className="text-base">
+                Page 22 — Notes & Fun Activities
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="flex flex-col gap-1">
+                {activeBook.activities.map((activity, index) => (
+                  <li key={index} className="text-sm leading-relaxed">
+                    • {activity}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+          <CardHeader>
+            <CardTitle className="text-base">
+              Page 23 — Story Summary & Key Learning Outcomes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">What We Learned</span>
+              <p className="text-sm leading-relaxed">
+                {activeBook.whatWeLearned}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Skills Developed</span>
+              <p className="text-sm leading-relaxed">
+                {activeBook.skillsDeveloped}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <AlertDialog
+          open={deleteTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null)
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>စာအုပ်ကို ဖျက်လိုက်မှာလား?</AlertDialogTitle>
+              <AlertDialogDescription>
+                ဒီစာအုပ် ပျက်သွားမယ် — ပြန်ယူလို့မရဘူး။
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>မဖျက်ဘူး</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (deleteTarget) onDeleteBook(deleteTarget)
+                  setDeleteTarget(null)
+                }}
+              >
+                ဖျက်
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-6">
+      <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+        <CardHeader>
+          <div>
+            <CardTitle>Children Book Writer</CardTitle>
+            <CardDescription>
+              Character ရွေးပြီး Generate နှိပ်ရင် စာအုပ် ၂၄ မျက်နှာ
+              အပြည့် ထွက်မယ် — Intro + story ၁၉ မျက်နှာ + Quiz +
+              Glossary + Activities + Summary။
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Character</span>
+            <div className="flex flex-wrap gap-2">
+              {FIXED_BOOK_CHARACTERS.map((character) => (
+                <Button
+                  key={character.id}
+                  variant={picked === character.id ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full"
+                  aria-pressed={picked === character.id}
+                  onClick={() => setPicked(character.id)}
+                >
+                  {character.id} —{" "}
+                  {character.id === "JJ"
+                    ? "JitJit"
+                    : character.id === "NL"
+                      ? "Nilar"
+                      : character.id === "SS"
+                        ? "SueSan"
+                        : "PyaeSone"}
+                </Button>
+              ))}
+              {customCharacters.map((character) => (
+                <Button
+                  key={character.id}
+                  variant={picked === character.id ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full"
+                  aria-pressed={picked === character.id}
+                  onClick={() => setPicked(character.id)}
+                >
+                  {character.name}
+                </Button>
+              ))}
+              <Button
+                variant={isNewCustom ? "default" : "outline"}
+                size="sm"
+                className="rounded-full"
+                aria-pressed={isNewCustom}
+                onClick={() => setPicked("new-custom")}
+              >
+                + Custom
+              </Button>
+            </div>
+          </div>
+
+          {pickedFixed && (
+            <div className="flex flex-col gap-1">
+              <p className="text-sm leading-relaxed">
+                {fixedBookCharacter(pickedFixed.id).lead}
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {fixedBookCharacter(pickedFixed.id).companion}
+              </p>
+            </div>
+          )}
+
+          {pickedCustom && (
+            <div className="flex flex-col gap-1">
+              <p className="text-sm leading-relaxed">
+                {pickedCustom.name}
+                {pickedCustom.genre ? ` · ${pickedCustom.genre}` : ""}
+                {pickedCustom.age ? ` · ${pickedCustom.age}` : ""}
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {[pickedCustom.appearance, pickedCustom.behavior]
+                  .filter(Boolean)
+                  .join(" — ")}
+              </p>
+              {pickedCustom.companionName && (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Companion: {pickedCustom.companionName}
+                  {pickedCustom.companionDescription
+                    ? ` — ${pickedCustom.companionDescription}`
+                    : ""}
+                </p>
+              )}
+            </div>
+          )}
+
+          {isNewCustom && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">
+                Character အသစ် ဆောက်မယ် — setup လုပ်ပြီး outline ရေးပါ။
+              </p>
+              <div>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setSetupOpen(true)}
+                >
+                  Character setup
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {pickedFixed && (
+            <Textarea
+              value={topic}
+              onChange={(event) => setTopic(event.target.value)}
+              placeholder="ဥပမာ — JitJit နဲ့ MelLone တို့ ပုဂံကို သွားလည်တဲ့ ခရီး"
+              className="min-h-28 text-base leading-relaxed"
+              aria-label="Book topic"
+            />
+          )}
+
+          {pickedCustom && (
+            <Textarea
+              value={outline}
+              onChange={(event) => setOutline(event.target.value)}
+              placeholder="ဇာတ်လမ်း outline နည်းနည်း ရေးပါ — ဘာအကြောင်း၊ ဘယ်မှာ၊ ဘာသင်ခန်းစာလဲ"
+              className="min-h-28 text-base leading-relaxed"
+              aria-label="Story outline"
+            />
+          )}
+        </CardContent>
+        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          {pickedFixed && (
+            <Button
+              size="lg"
+              disabled={busy || !topic.trim()}
+              onClick={() =>
+                onGenerateFixedBook(pickedFixed.id, topic.trim())
+              }
+            >
+              <SparklesIcon />
+              {busy ? "Generating…" : "Generate book"}
+            </Button>
+          )}
+          {pickedCustom && (
+            <Button
+              size="lg"
+              disabled={busy || !outline.trim()}
+              onClick={() => onGenerateCustomBook(pickedCustom, outline.trim())}
+            >
+              <SparklesIcon />
+              {busy ? "Generating…" : "Generate book"}
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
+
+      {books.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <h2 className="text-lg font-medium">My Books</h2>
+          {books.map((book) => (
+            <div key={book.id} className="flex gap-2">
+              <Button
+                variant="outline"
+                size="lg"
+                className="min-w-0 flex-1 justify-start"
+                onClick={() => onSelectBook(book.id)}
+              >
+                <span className="truncate">
+                  {book.title} · {book.characterName}
+                </span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Delete ${book.title}`}
+                onClick={() => setDeleteTarget(book.id)}
+              >
+                <Trash2Icon />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <CenterMorphModal open={setupOpen} onOpenChange={setSetupOpen}>
+        <CenterMorphModalContent
+          ariaLabel="Character setup"
+          ariaDescribedBy="book-setup-desc"
+          className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl"
+        >
+          <div className="flex flex-col gap-3 pr-10">
+            <h2 className="text-base leading-none font-medium">
+              Character setup
+            </h2>
+            <p
+              id="book-setup-desc"
+              className="text-sm text-muted-foreground"
+            >
+              Character အသစ်အကြောင်း ထည့်ပါ။ Save လုပ်ရင် နောက်လည်း
+              ပြန်ရွေးလို့ရမယ်။
+            </p>
+          </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Name *</span>
+              <Input
+                value={setupName}
+                onChange={(event) => setSetupName(event.target.value)}
+                placeholder="ဥပမာ — Thiri"
+                className="text-base"
+                aria-label="Custom character name"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Genre</span>
+              <Input
+                value={setupGenre}
+                onChange={(event) => setSetupGenre(event.target.value)}
+                placeholder="ဥပမာ — manners, science, adventure"
+                className="text-base"
+                aria-label="Custom character genre"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Age</span>
+              <Input
+                value={setupAge}
+                onChange={(event) => setSetupAge(event.target.value)}
+                placeholder="ဥပမာ — 9 years old"
+                className="text-base"
+                aria-label="Custom character age"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Appearance</span>
+              <Input
+                value={setupAppearance}
+                onChange={(event) => setSetupAppearance(event.target.value)}
+                placeholder="ဥပမာ — short black hair, red shirt, blue longyi"
+                className="text-base"
+                aria-label="Custom character appearance"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Behavior</span>
+              <Input
+                value={setupBehavior}
+                onChange={(event) => setSetupBehavior(event.target.value)}
+                placeholder="ဥပမာ — curious, shy, loves animals"
+                className="text-base"
+                aria-label="Custom character behavior"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Companion name</span>
+              <Input
+                value={setupCompanionName}
+                onChange={(event) => setSetupCompanionName(event.target.value)}
+                placeholder="ဥပမာ — Mini the puppy"
+                className="text-base"
+                aria-label="Custom companion name"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">
+                Companion description
+              </span>
+              <Input
+                value={setupCompanionDescription}
+                onChange={(event) =>
+                  setSetupCompanionDescription(event.target.value)
+                }
+                placeholder="ဥပမာ — small brown puppy, playful"
+                className="text-base"
+                aria-label="Custom companion description"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setSetupOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveSetup}>Save character</Button>
+          </div>
+        </CenterMorphModalContent>
+      </CenterMorphModal>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>စာအုပ်ကို ဖျက်လိုက်မှာလား?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ဒီစာအုပ် ပျက်သွားမယ် — ပြန်ယူလို့မရဘူး။
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>မဖျက်ဘူး</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget) onDeleteBook(deleteTarget)
+                setDeleteTarget(null)
+              }}
+            >
+              ဖျက်
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
