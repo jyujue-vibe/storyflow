@@ -1,5 +1,11 @@
-import { useState } from "react"
-import { SparklesIcon, Trash2Icon } from "lucide-react"
+import { useEffect, useState } from "react"
+import {
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  SparklesIcon,
+  Trash2Icon,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,6 +39,14 @@ import {
   CenterMorphModal,
   CenterMorphModalContent,
 } from "@/components/motion/center-morph-modal"
+import { ExportDialog } from "@/components/ExportDialog"
+import {
+  buildBookMarkdown,
+  buildBookPrintHtml,
+  bookFileName,
+  downloadTextFile,
+  openPrintWindow,
+} from "@/lib/export"
 import {
   FIXED_BOOK_CHARACTERS,
   fixedBookCharacter,
@@ -43,11 +57,10 @@ import {
 
 interface BookViewProps {
   busy: boolean
-  books: ChildBook[]
   activeBook: ChildBook | null
   customCharacters: CustomBookCharacter[]
   bookIssues: string[]
-  onSelectBook: (id: string | null) => void
+  onNewBook: () => void
   onDeleteBook: (id: string) => void
   onSaveCustomCharacter: (
     character: Omit<CustomBookCharacter, "id">,
@@ -60,37 +73,87 @@ interface BookViewProps {
     character: CustomBookCharacter,
     outline: string,
   ) => void
+  /** Controlled character picker (home Enter needs to read it). */
+  picked: string
+  onPickedChange: (id: string) => void
+  /** Controlled custom-setup modal (home Enter opens it for new-custom). */
+  setupOpen: boolean
+  onSetupOpenChange: (open: boolean) => void
+  /** When true (home middle): hide topic/outline inputs + Generate button. */
+  embedded?: boolean
+  /** Increment to reset local topic/outline (home Reset button). */
+  resetSignal?: number
   toast: {
+    success: (title: string, options?: { description?: string }) => void
     error: (title: string, options?: { description?: string }) => void
   }
 }
 
-const PROMPT_PRE_CLASS =
-  "font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6"
+/** Copy-to-clipboard button with a brief "Copied" state. Falls back to a
+ * hidden textarea + execCommand when the Clipboard API is unavailable. */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    if (!text) return
+    let ok = false
+    try {
+      await navigator.clipboard.writeText(text)
+      ok = true
+    } catch {
+      try {
+        const area = document.createElement("textarea")
+        area.value = text
+        area.style.position = "fixed"
+        area.style.opacity = "0"
+        document.body.appendChild(area)
+        area.select()
+        ok = document.execCommand("copy")
+        area.remove()
+      } catch {
+        ok = false
+      }
+    }
+    if (!ok) return
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <Button variant="ghost" size="sm" onClick={copy} aria-label="Copy story content">
+      {copied ? <CheckIcon /> : <CopyIcon />}
+      {copied ? "Copied" : "Copy"}
+    </Button>
+  )
+}
 
 /**
  * Children Book Writer view. Same visual language as the story creator:
  * Card spacing, lg text buttons, sm chips, CenterMorphModal for the custom
  * character setup (mirroring the story creator's character modal), footer
- * buttons bottom-right. Custom setup is a modal; the outline stays inline.
+ * buttons bottom-right. Books live in the SIDEBAR thread list — this view
+ * has no "My Books" list anymore (#67). Per-page sections are 3 now:
+ * Story Content (Myanmar + English side by side), Learning Focus,
+ * Illustration Ideas — no Image Generation Prompt.
  */
 export function BookView({
   busy,
-  books,
   activeBook,
   customCharacters,
   bookIssues,
-  onSelectBook,
+  onNewBook,
   onDeleteBook,
   onSaveCustomCharacter,
   onGenerateFixedBook,
   onGenerateCustomBook,
+  picked,
+  onPickedChange,
+  setupOpen,
+  onSetupOpenChange,
+  embedded,
+  resetSignal,
   toast,
 }: BookViewProps) {
-  const [picked, setPicked] = useState<string>("JJ")
   const [topic, setTopic] = useState("")
   const [outline, setOutline] = useState("")
-  const [setupOpen, setSetupOpen] = useState(false)
   const [setupName, setSetupName] = useState("")
   const [setupGenre, setSetupGenre] = useState("")
   const [setupAge, setSetupAge] = useState("")
@@ -100,6 +163,12 @@ export function BookView({
   const [setupCompanionDescription, setSetupCompanionDescription] =
     useState("")
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
+
+  useEffect(() => {
+    setTopic("")
+    setOutline("")
+  }, [resetSignal])
 
   const pickedFixed = FIXED_BOOK_CHARACTERS.find(
     (character) => character.id === picked,
@@ -133,9 +202,143 @@ export function BookView({
     setSetupBehavior("")
     setSetupCompanionName("")
     setSetupCompanionDescription("")
-    setSetupOpen(false)
-    setPicked(id)
+    onSetupOpenChange(false)
+    onPickedChange(id)
   }
+
+  const setupModal = (
+    <CenterMorphModal open={setupOpen} onOpenChange={onSetupOpenChange}>
+      <CenterMorphModalContent
+        ariaLabel="Character setup"
+        ariaDescribedBy="book-setup-desc"
+        className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl"
+      >
+        <div className="flex flex-col gap-3 pr-10">
+          <h2 className="text-base leading-none font-medium">
+            Character setup
+          </h2>
+          <p
+            id="book-setup-desc"
+            className="text-sm text-muted-foreground"
+          >
+            Character အသစ်အကြောင်း ထည့်ပါ။ Save လုပ်ရင် နောက်လည်း
+            ပြန်ရွေးလို့ရမယ်။
+          </p>
+        </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Name *</span>
+            <Input
+              value={setupName}
+              onChange={(event) => setSetupName(event.target.value)}
+              placeholder="ဥပမာ — Thiri"
+              className="text-base"
+              aria-label="Custom character name"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Genre</span>
+            <Input
+              value={setupGenre}
+              onChange={(event) => setSetupGenre(event.target.value)}
+              placeholder="ဥပမာ — manners, science, adventure"
+              className="text-base"
+              aria-label="Custom character genre"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Age</span>
+            <Input
+              value={setupAge}
+              onChange={(event) => setSetupAge(event.target.value)}
+              placeholder="ဥပမာ — 9 years old"
+              className="text-base"
+              aria-label="Custom character age"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Appearance</span>
+            <Input
+              value={setupAppearance}
+              onChange={(event) => setSetupAppearance(event.target.value)}
+              placeholder="ဥပမာ — short black hair, red shirt, blue longyi"
+              className="text-base"
+              aria-label="Custom character appearance"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Behavior</span>
+            <Input
+              value={setupBehavior}
+              onChange={(event) => setSetupBehavior(event.target.value)}
+              placeholder="ဥပမာ — curious, shy, loves animals"
+              className="text-base"
+              aria-label="Custom character behavior"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Companion name</span>
+            <Input
+              value={setupCompanionName}
+              onChange={(event) => setSetupCompanionName(event.target.value)}
+              placeholder="ဥပမာ — Mini the puppy"
+              className="text-base"
+              aria-label="Custom companion name"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">
+              Companion description
+            </span>
+            <Input
+              value={setupCompanionDescription}
+              onChange={(event) =>
+                setSetupCompanionDescription(event.target.value)
+              }
+              placeholder="ဥပမာ — small brown puppy, playful"
+              className="text-base"
+              aria-label="Custom companion description"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => onSetupOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={saveSetup}>Save character</Button>
+        </div>
+      </CenterMorphModalContent>
+    </CenterMorphModal>
+  )
+
+  const deleteDialog = (
+    <AlertDialog
+      open={deleteTarget !== null}
+      onOpenChange={(open) => {
+        if (!open) setDeleteTarget(null)
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>စာအုပ်ကို ဖျက်လိုက်မှာလား?</AlertDialogTitle>
+          <AlertDialogDescription>
+            ဒီစာအုပ် ပျက်သွားမယ် — ပြန်ယူလို့မရဘူး။
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>မဖျက်ဘူး</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (deleteTarget) onDeleteBook(deleteTarget)
+              setDeleteTarget(null)
+            }}
+          >
+            ဖျက်
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 
   if (activeBook) {
     return (
@@ -153,9 +356,17 @@ export function BookView({
             <Button
               variant="outline"
               size="lg"
-              onClick={() => onSelectBook(null)}
+              onClick={onNewBook}
             >
               New book
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setExportOpen(true)}
+            >
+              <DownloadIcon />
+              Export
             </Button>
             <Button
               variant="outline"
@@ -206,11 +417,32 @@ export function BookView({
               <CardTitle className="text-base">Page {page.number}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Story Content</span>
-                <p className="text-sm leading-relaxed sm:text-base">
-                  {page.story}
-                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        မြန်မာ
+                      </span>
+                      <CopyButton text={page.storyMyanmar} />
+                    </div>
+                    <p className="text-sm leading-relaxed sm:text-base">
+                      {page.storyMyanmar || "—"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        English
+                      </span>
+                      <CopyButton text={page.story} />
+                    </div>
+                    <p className="text-sm leading-relaxed sm:text-base">
+                      {page.story || "—"}
+                    </p>
+                  </div>
+                </div>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-sm font-medium">Learning Focus</span>
@@ -223,12 +455,6 @@ export function BookView({
                 <p className="text-sm leading-relaxed">
                   {page.illustrationIdeas}
                 </p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium">
-                  Image Generation Prompt
-                </span>
-                <pre className={PROMPT_PRE_CLASS}>{page.imagePrompt}</pre>
               </div>
             </CardContent>
           </Card>
@@ -328,32 +554,31 @@ export function BookView({
           </CardContent>
         </Card>
 
-        <AlertDialog
-          open={deleteTarget !== null}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null)
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          title={activeBook.title}
+          onDownloadMd={() => {
+            const filename = bookFileName(activeBook)
+            downloadTextFile(filename, buildBookMarkdown(activeBook))
+            toast.success("Exported", { description: filename })
           }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>စာအုပ်ကို ဖျက်လိုက်မှာလား?</AlertDialogTitle>
-              <AlertDialogDescription>
-                ဒီစာအုပ် ပျက်သွားမယ် — ပြန်ယူလို့မရဘူး။
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>မဖျက်ဘူး</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  if (deleteTarget) onDeleteBook(deleteTarget)
-                  setDeleteTarget(null)
-                }}
-              >
-                ဖျက်
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          onPrintPdf={() => {
+            const ok = openPrintWindow(
+              bookFileName(activeBook),
+              buildBookPrintHtml(activeBook),
+            )
+            if (ok) {
+              toast.success("Print dialog ဖွင့်ပြီ", {
+                description: "Save as PDF ကို ရွေးပါ။",
+              })
+            } else {
+              toast.error("Popup blocked — browser က popup ခွင့်ပြုပါ။")
+            }
+          }}
+        />
+
+        {deleteDialog}
       </div>
     )
   }
@@ -382,7 +607,7 @@ export function BookView({
                   size="sm"
                   className="rounded-full"
                   aria-pressed={picked === character.id}
-                  onClick={() => setPicked(character.id)}
+                  onClick={() => onPickedChange(character.id)}
                 >
                   {character.id} —{" "}
                   {character.id === "JJ"
@@ -401,7 +626,7 @@ export function BookView({
                   size="sm"
                   className="rounded-full"
                   aria-pressed={picked === character.id}
-                  onClick={() => setPicked(character.id)}
+                  onClick={() => onPickedChange(character.id)}
                 >
                   {character.name}
                 </Button>
@@ -411,7 +636,7 @@ export function BookView({
                 size="sm"
                 className="rounded-full"
                 aria-pressed={isNewCustom}
-                onClick={() => setPicked("new-custom")}
+                onClick={() => onPickedChange("new-custom")}
               >
                 + Custom
               </Button>
@@ -461,7 +686,7 @@ export function BookView({
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => setSetupOpen(true)}
+                  onClick={() => onSetupOpenChange(true)}
                 >
                   Character setup
                 </Button>
@@ -469,209 +694,64 @@ export function BookView({
             </div>
           )}
 
-          {pickedFixed && (
-            <Textarea
-              value={topic}
-              onChange={(event) => setTopic(event.target.value)}
-              placeholder="ဥပမာ — JitJit နဲ့ MelLone တို့ ပုဂံကို သွားလည်တဲ့ ခရီး"
-              className="min-h-28 text-base leading-relaxed"
-              aria-label="Book topic"
-            />
-          )}
+          {embedded ? (
+            <p className="text-sm text-muted-foreground">
+              Topic / outline ကို အောက် box မှာ ရိုက်ပြီး Enter နှိပ်ပါ။
+            </p>
+          ) : (
+            <>
+              {pickedFixed && (
+                <Textarea
+                  value={topic}
+                  onChange={(event) => setTopic(event.target.value)}
+                  placeholder="ဥပမာ — JitJit နဲ့ MelLone တို့ ပုဂံကို သွားလည်တဲ့ ခရီး"
+                  className="min-h-28 text-base leading-relaxed"
+                  aria-label="Book topic"
+                />
+              )}
 
-          {pickedCustom && (
-            <Textarea
-              value={outline}
-              onChange={(event) => setOutline(event.target.value)}
-              placeholder="ဇာတ်လမ်း outline နည်းနည်း ရေးပါ — ဘာအကြောင်း၊ ဘယ်မှာ၊ ဘာသင်ခန်းစာလဲ"
-              className="min-h-28 text-base leading-relaxed"
-              aria-label="Story outline"
-            />
+              {pickedCustom && (
+                <Textarea
+                  value={outline}
+                  onChange={(event) => setOutline(event.target.value)}
+                  placeholder="ဇာတ်လမ်း outline နည်းနည်း ရေးပါ — ဘာအကြောင်း၊ ဘယ်မှာ၊ ဘာသင်ခန်းစာလဲ"
+                  className="min-h-28 text-base leading-relaxed"
+                  aria-label="Story outline"
+                />
+              )}
+            </>
           )}
         </CardContent>
-        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          {pickedFixed && (
-            <Button
-              size="lg"
-              disabled={busy || !topic.trim()}
-              onClick={() =>
-                onGenerateFixedBook(pickedFixed.id, topic.trim())
-              }
-            >
-              <SparklesIcon />
-              {busy ? "Generating…" : "Generate book"}
-            </Button>
-          )}
-          {pickedCustom && (
-            <Button
-              size="lg"
-              disabled={busy || !outline.trim()}
-              onClick={() => onGenerateCustomBook(pickedCustom, outline.trim())}
-            >
-              <SparklesIcon />
-              {busy ? "Generating…" : "Generate book"}
-            </Button>
-          )}
-        </CardFooter>
+        {!embedded && (
+          <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {pickedFixed && (
+              <Button
+                size="lg"
+                disabled={busy || !topic.trim()}
+                onClick={() =>
+                  onGenerateFixedBook(pickedFixed.id, topic.trim())
+                }
+              >
+                <SparklesIcon />
+                {busy ? "Generating…" : "Generate book"}
+              </Button>
+            )}
+            {pickedCustom && (
+              <Button
+                size="lg"
+                disabled={busy || !outline.trim()}
+                onClick={() => onGenerateCustomBook(pickedCustom, outline.trim())}
+              >
+                <SparklesIcon />
+                {busy ? "Generating…" : "Generate book"}
+              </Button>
+            )}
+          </CardFooter>
+        )}
       </Card>
 
-      {books.length > 0 && (
-        <div className="flex flex-col gap-4">
-          <h2 className="text-lg font-medium">My Books</h2>
-          {books.map((book) => (
-            <div key={book.id} className="flex gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                className="min-w-0 flex-1 justify-start"
-                onClick={() => onSelectBook(book.id)}
-              >
-                <span className="truncate">
-                  {book.title} · {book.characterName}
-                </span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Delete ${book.title}`}
-                onClick={() => setDeleteTarget(book.id)}
-              >
-                <Trash2Icon />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <CenterMorphModal open={setupOpen} onOpenChange={setSetupOpen}>
-        <CenterMorphModalContent
-          ariaLabel="Character setup"
-          ariaDescribedBy="book-setup-desc"
-          className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl"
-        >
-          <div className="flex flex-col gap-3 pr-10">
-            <h2 className="text-base leading-none font-medium">
-              Character setup
-            </h2>
-            <p
-              id="book-setup-desc"
-              className="text-sm text-muted-foreground"
-            >
-              Character အသစ်အကြောင်း ထည့်ပါ။ Save လုပ်ရင် နောက်လည်း
-              ပြန်ရွေးလို့ရမယ်။
-            </p>
-          </div>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Name *</span>
-              <Input
-                value={setupName}
-                onChange={(event) => setSetupName(event.target.value)}
-                placeholder="ဥပမာ — Thiri"
-                className="text-base"
-                aria-label="Custom character name"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Genre</span>
-              <Input
-                value={setupGenre}
-                onChange={(event) => setSetupGenre(event.target.value)}
-                placeholder="ဥပမာ — manners, science, adventure"
-                className="text-base"
-                aria-label="Custom character genre"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Age</span>
-              <Input
-                value={setupAge}
-                onChange={(event) => setSetupAge(event.target.value)}
-                placeholder="ဥပမာ — 9 years old"
-                className="text-base"
-                aria-label="Custom character age"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Appearance</span>
-              <Input
-                value={setupAppearance}
-                onChange={(event) => setSetupAppearance(event.target.value)}
-                placeholder="ဥပမာ — short black hair, red shirt, blue longyi"
-                className="text-base"
-                aria-label="Custom character appearance"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Behavior</span>
-              <Input
-                value={setupBehavior}
-                onChange={(event) => setSetupBehavior(event.target.value)}
-                placeholder="ဥပမာ — curious, shy, loves animals"
-                className="text-base"
-                aria-label="Custom character behavior"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Companion name</span>
-              <Input
-                value={setupCompanionName}
-                onChange={(event) => setSetupCompanionName(event.target.value)}
-                placeholder="ဥပမာ — Mini the puppy"
-                className="text-base"
-                aria-label="Custom companion name"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">
-                Companion description
-              </span>
-              <Input
-                value={setupCompanionDescription}
-                onChange={(event) =>
-                  setSetupCompanionDescription(event.target.value)
-                }
-                placeholder="ဥပမာ — small brown puppy, playful"
-                className="text-base"
-                aria-label="Custom companion description"
-              />
-            </div>
-          </div>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setSetupOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveSetup}>Save character</Button>
-          </div>
-        </CenterMorphModalContent>
-      </CenterMorphModal>
-
-      <AlertDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null)
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>စာအုပ်ကို ဖျက်လိုက်မှာလား?</AlertDialogTitle>
-            <AlertDialogDescription>
-              ဒီစာအုပ် ပျက်သွားမယ် — ပြန်ယူလို့မရဘူး။
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>မဖျက်ဘူး</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteTarget) onDeleteBook(deleteTarget)
-                setDeleteTarget(null)
-              }}
-            >
-              ဖျက်
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {setupModal}
+      {deleteDialog}
     </div>
   )
 }
