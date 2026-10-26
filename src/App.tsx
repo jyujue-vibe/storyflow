@@ -2157,7 +2157,7 @@ function AppShell() {
     const backgroundsBlock = backgroundLines
       ? `Backgrounds — reuse exactly, same BG IDs, names and descriptions:\n${backgroundLines}\n`
       : ""
-    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Genre: ${record.genre}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\n${backgroundsBlock}Previous episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
+    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nGenre: ${episode.genre} — reuse this EXACTLY in Title & Details, do not reword.\nVisual Style: ${episode.visualStyle} — reuse this EXACTLY in Title & Details and in every image prompt, do not change.\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\n${backgroundsBlock}Previous episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
   }
 
   // Generation modal state: the modal is open while generating or while a
