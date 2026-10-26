@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import animationData from "@/assets/Generation.json"
 
-export type GenerationKind = "generate" | "continue" | "rewrite"
+export type GenerationKind = "generate" | "continue" | "rewrite" | "novel" | "book"
 
 interface GenerationModalProps {
   open: boolean
@@ -36,6 +36,8 @@ const KIND_TITLES: Record<GenerationKind, string> = {
   generate: "Episode ရေးနေတယ်",
   continue: "နောက်အပိုင်း ရေးနေတယ်",
   rewrite: "Episode ပြန်ရေးနေတယ်",
+  novel: "ဝတ္ထု ရေးနေတယ်",
+  book: "စာအုပ် ရေးနေတယ်",
 }
 
 /**
