@@ -36,12 +36,13 @@ function mapOpenAIStatusToMessage(status: number, apiMessage?: string): string {
  * the key is passed in by the caller (it lives only in the browser's
  * localStorage) and is never logged or stored here. The shared system
  * instruction produces the same 8-section format, so the parser is reused
- * unchanged.
+ * unchanged. Callers may override the system instruction (novel/book modes);
+ * the default keeps existing callers behaving exactly as before.
  */
 export async function generateEpisodeTextOpenAI(
   apiKey: string,
   userPrompt: string,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; systemInstruction?: string },
 ): Promise<string> {
   let response: Response
   try {
@@ -55,7 +56,7 @@ export async function generateEpisodeTextOpenAI(
       body: JSON.stringify({
         model: OPENAI_MODEL,
         messages: [
-          { role: "system", content: SYSTEM_INSTRUCTION },
+          { role: "system", content: options?.systemInstruction ?? SYSTEM_INSTRUCTION },
           { role: "user", content: userPrompt },
         ],
       }),
