@@ -3396,7 +3396,11 @@ function AppShell() {
   const homeMiddle =
     homeMode === "story" ? (
       <>
-        {storySettings}
+        <Card className="[--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
+          <CardContent className="flex flex-col gap-6">
+            {storySettings}
+          </CardContent>
+        </Card>
         <SampleView
           sceneDuration={sceneDuration}
           onCopy={copyPrompt}
