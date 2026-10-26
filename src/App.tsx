@@ -7,6 +7,7 @@ import {
 
 import logoUrl from "./assets/storyflow-logo.svg"
 import {
+  BookHeartIcon,
   BookOpenIcon,
   ClapperboardIcon,
   CopyIcon,
@@ -21,8 +22,6 @@ import {
   PlusIcon,
   RefreshCwIcon,
   SettingsIcon,
-  ShuffleIcon,
-  SparklesIcon,
   SunIcon,
   Trash2Icon,
 } from "lucide-react"
@@ -50,7 +49,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -74,13 +72,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Empty,
-  EmptyContent,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -117,8 +108,10 @@ import { parseEpisode, type Episode } from "@/lib/parse"
 import { GenerationModal, type GenerationKind } from "@/components/GenerationModal"
 import { NovelView } from "@/components/NovelView"
 import { BookView } from "@/components/BookView"
+import { HomeView, type HomeMode } from "@/components/HomeView"
 import {
   CHILDREN_BOOK_INSTRUCTION,
+  FIXED_BOOK_CHARACTERS,
   buildCustomBookPrompt,
   buildFixedBookPrompt,
   fixedBookCharacter,
@@ -188,22 +181,6 @@ const GENRE_OPTIONS = [
   { value: "scifi", label: "Sci-fi" },
   { value: "custom", label: "Custom" },
 ]
-
-// Genres shown as quick-pick buttons in the intro card.
-const INTRO_GENRES = ["romance", "kids", "animal", "superhero", "detective"]
-
-// Auto-filled idea text when a genre quick-pick is clicked.
-const INTRO_GENRE_PROMPTS: Record<string, string> = {
-  romance:
-    "Create a romantic love story about two people who meet by chance and slowly fall in love.",
-  kids: "Create a fun kids story about a curious little child who learns something new through a small adventure.",
-  animal:
-    "Create a heartwarming animal story about a brave little animal who helps its friends.",
-  superhero:
-    "Create an exciting superhero story about a young hero who discovers their power and saves the day.",
-  detective:
-    "Create a mysterious detective story where a clever detective solves a puzzling case with hidden clues.",
-}
 
 // Random story ideas for the intro "Random idea" button — click inserts one
 // (plus its genre) into the Create form. Each idea is a one-line seed JJ can
@@ -304,6 +281,28 @@ const THREAD_TITLES_STORAGE = "mm3d.threadTitles"
 const NOVELS_STORAGE = "mm3d.novels"
 const CHILD_BOOKS_STORAGE = "mm3d.childBooks"
 const CUSTOM_BOOK_CHARS_STORAGE = "mm3d.customBookChars"
+const THREAD_FILTER_STORAGE = "mm3d.threadFilter"
+
+/** Sidebar thread filter. Persisted (view-only; never changes thread data). */
+type ThreadFilter = "all" | "story" | "novel" | "book" | "documentary"
+
+function loadSavedThreadFilter(): ThreadFilter {
+  try {
+    const raw = localStorage.getItem(THREAD_FILTER_STORAGE)
+    if (
+      raw === "all" ||
+      raw === "story" ||
+      raw === "novel" ||
+      raw === "book" ||
+      raw === "documentary"
+    ) {
+      return raw
+    }
+    return "all"
+  } catch {
+    return "all"
+  }
+}
 // Google sign-in + Drive appDataFolder sync. The client ID is a public
 // identifier (GIS embeds it in the page) — no secret lives in this app.
 const GOOGLE_CLIENT_ID =
@@ -1560,8 +1559,16 @@ function AppShell() {
   const [threadTitles, setThreadTitles] = useState<Record<string, string>>(() =>
     loadThreadTitles(),
   )
-  const [renameThreadId, setRenameThreadId] = useState<string | null>(null)
+  const [renameTarget, setRenameTarget] = useState<{
+    kind: "story" | "novel" | "book"
+    id: string
+  } | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [sidebarDelete, setSidebarDelete] = useState<{
+    kind: "novel" | "book"
+    id: string
+    title: string
+  } | null>(null)
   const [rewriteTarget, setRewriteTarget] = useState<Episode | null>(null)
   const [rewriteNote, setRewriteNote] = useState("")
   // Google account + Drive sync. The access token lives in memory only
@@ -1590,19 +1597,33 @@ function AppShell() {
   const threadTitlesRef = useRef<Record<string, string>>({})
   const [episodes, setEpisodes] = useState<Episode[]>(() => loadSavedEpisodes())
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null)
-  // Multi-mode expansion (2026-10-26): 'story' is the existing episode
-  // builder; 'novel' and 'book' are the new mode views. Story state above
+  // Multi-mode expansion (2026-10-26), home page (#67): 'home' is the
+  // new-item create page (welcome + mode cards + middle settings + bottom
+  // composer); 'story'/'novel'/'book' are reader views. Story state above
   // is untouched by mode switches, so returning to a story restores it.
-  const [mode, setMode] = useState<"story" | "novel" | "book">("story")
-  const [modeModalOpen, setModeModalOpen] = useState(false)
+  // Drafts are saved novel threads (no transient draft state): a fresh
+  // draft and a resumed draft render the same workspace.
+  const [mode, setMode] = useState<"home" | "story" | "novel" | "book">(
+    "home",
+  )
+  const [homeMode, setHomeMode] = useState<HomeMode>("story")
   const [novels, setNovels] = useState<Novel[]>(() => loadSavedNovels())
   const [activeNovelId, setActiveNovelId] = useState<string | null>(null)
-  const [novelDrafts, setNovelDrafts] = useState<NovelDraft[]>([])
   const [books, setBooks] = useState<ChildBook[]>(() => loadSavedChildBooks())
   const [activeBookId, setActiveBookId] = useState<string | null>(null)
   const [customBookChars, setCustomBookChars] = useState<
     CustomBookCharacter[]
   >(() => loadSavedCustomBookChars())
+  // Book create state lifted to AppShell so the home Enter button can read
+  // it (BookView owns only its setup form fields).
+  const [bookPicked, setBookPicked] = useState<string>("JJ")
+  const [bookSetupOpen, setBookSetupOpen] = useState(false)
+  // Incremented by home Reset so NovelView/BookView reset their internal
+  // length/picked scratch state (saved threads are never touched).
+  const [resetSignal, setResetSignal] = useState(0)
+  const [threadFilter, setThreadFilter] = useState<ThreadFilter>(() =>
+    loadSavedThreadFilter(),
+  )
   const [bookIssues, setBookIssues] = useState<string[]>([])
   const [openSection, setOpenSection] = useState<string | null>("details")
   const [showGuide, setShowGuide] = useState(false)
@@ -1843,19 +1864,9 @@ function AppShell() {
     setSyncStatus("synced")
     setLastSyncedAt(new Date().toISOString())
     consentRequestedRef.current = false
-    // Fresh device: open the latest story automatically.
-    if (!activeEpisodeRef.current && mergedEpisodes.length > 0) {
-      const byThread = new Map<string, Episode[]>()
-      for (const episode of mergedEpisodes) {
-        const list = byThread.get(episode.threadId) ?? []
-        list.push(episode)
-        byThread.set(episode.threadId, list)
-      }
-      const latest = [...byThread.values()][0].sort(
-        (a, b) => b.episodeNumber - a.episodeNumber,
-      )[0]
-      if (latest) setActiveEpisode(latest)
-    }
+    // #67 landing rule: after sync the app STAYS on the home page. Threads
+    // open only when the user clicks one in the sidebar — never
+    // automatically (the old fresh-device auto-jump lived here).
   }
 
   async function handleGoogleToken(response: {
@@ -2082,23 +2093,107 @@ function AppShell() {
     [books, activeBookId],
   )
 
-  function selectNovel(id: string | null) {
-    setActiveNovelId(id)
-  }
-
   function deleteNovel(id: string) {
     persistNovels(novels.filter((novel) => novel.id !== id))
-    if (activeNovelId === id) setActiveNovelId(null)
-  }
-
-  function selectBook(id: string | null) {
-    setActiveBookId(id)
-    setBookIssues([])
+    // Deleting what you're viewing lands back on home (#67).
+    if (activeNovelId === id) {
+      setActiveNovelId(null)
+      setMode("home")
+    }
   }
 
   function deleteBook(id: string) {
     persistBooks(books.filter((book) => book.id !== id))
-    if (activeBookId === id) setActiveBookId(null)
+    if (activeBookId === id) {
+      setActiveBookId(null)
+      setBookIssues([])
+      setMode("home")
+    }
+  }
+
+  /** Home = the new-item create page. Clears every active reader. */
+  function goHome(mode?: HomeMode) {
+    setActiveEpisode(null)
+    setActiveNovelId(null)
+    setActiveBookId(null)
+    setRawFallback(null)
+    setParseIssues([])
+    setBookIssues([])
+    setShowGuide(false)
+    if (mode) setHomeMode(mode)
+    setMode("home")
+  }
+
+  /** Home Reset: input + story settings back to defaults, mode kept.
+   * Saved threads are never touched. */
+  function handleHomeReset() {
+    setIdea("")
+    setGenre("family")
+    setCustomGenre("")
+    setStyle("cinematic")
+    setCustomStyle("")
+    setSceneDuration(8)
+    setRatio("16:9")
+    setCharacters([])
+    setBackgrounds([])
+    setBookPicked("JJ")
+    setResetSignal((n) => n + 1)
+  }
+
+  /** Home Random: a random idea from the existing pool (story mode also
+   * takes the pool entry's genre, matching the old create view). */
+  function handleHomeRandom() {
+    const candidates = RANDOM_IDEAS.filter((entry) => entry.idea !== idea)
+    const list = candidates.length > 0 ? candidates : RANDOM_IDEAS
+    const pick = list[Math.floor(Math.random() * list.length)]
+    if (homeMode === "story") setGenre(pick.genre)
+    setIdea(pick.idea)
+  }
+
+  /** Home Enter: the ONLY way generation starts from home. */
+  function handleHomeEnter() {
+    const text = idea.trim()
+    if (!text) {
+      toast.error("Idea ထည့်ပါ", {
+        description: "Idea တစ်ကြောင်း အရင်ရိုက်ပါ။",
+      })
+      return
+    }
+    if (homeMode === "story") {
+      void handleGenerate()
+      return
+    }
+    if (homeMode === "novel") {
+      void runNovelDrafts(text)
+      return
+    }
+    const fixed = FIXED_BOOK_CHARACTERS.find((c) => c.id === bookPicked)
+    if (fixed) {
+      void runBook({
+        fixedId: fixed.id,
+        custom: null,
+        topic: text,
+        characterId: fixed.id,
+        characterName: fixed.shortLabel,
+      })
+      return
+    }
+    const custom = customBookChars.find((c) => c.id === bookPicked)
+    if (custom) {
+      void runBook({
+        fixedId: null,
+        custom,
+        topic: text,
+        characterId: custom.id,
+        characterName: custom.name,
+      })
+      return
+    }
+    // "new-custom" with no saved character yet: open setup first.
+    setBookSetupOpen(true)
+    toast.info("Character setup အရင် လုပ်ပါ", {
+      description: "Character အသစ် ဆောက်ပြီးမှ Enter နှိပ်ပါ။",
+    })
   }
 
   function saveCustomBookCharacter(
@@ -2466,6 +2561,8 @@ function AppShell() {
       episode.aspect = aspectLabel
       persistEpisodes([episode, ...episodes])
       setActiveEpisode(episode)
+      // Generation started from home lands on the new episode (#67).
+      setMode("story")
       setParseIssues(issues)
       toast.success("Episode ရပြီ", {
         description: `${episode.title} (Episode ${String(episode.episodeNumber).padStart(2, "0")})`,
@@ -2667,7 +2764,12 @@ function AppShell() {
     )
   }
 
-  async function runNovelDrafts(idea: string) {
+  // #67 novel flow: exactly ONE draft, saved as a thread the moment it
+  // arrives (episode-less, totalEpisodes 0) so the user can resume later
+  // from the sidebar. Regenerate replaces the same thread instead of
+  // piling up discarded drafts. No navigation here — the draft resume
+  // workspace shows in the home middle area.
+  async function runNovelDrafts(idea: string, replaceNovelId?: string) {
     const key = activeKey
     if (!key) {
       missingKeyNotice()
@@ -2690,12 +2792,50 @@ function AppShell() {
       const drafts = parseNovelDrafts(text)
       if (drafts.length === 0) {
         setGenSlow(false)
-        setGenError("Draft တွေ parse လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။")
+        setGenError("Draft parse လုပ်လို့မရဘူး။ ပြန်စမ်းပါ။")
         return
       }
-      setNovelDrafts(drafts)
-      toast.success("Draft တွေ ရပြီ", {
-        description: `${drafts.length} ခု ရွေးစရာ ရှိတယ်။`,
+      const draft = drafts[0]
+      const existing = replaceNovelId
+        ? novels.find((novel) => novel.id === replaceNovelId)
+        : undefined
+      if (existing) {
+        persistNovels(
+          novels.map((novel) =>
+            novel.id === existing.id
+              ? {
+                  ...novel,
+                  title: draft.title,
+                  titleEn: draft.titleEn,
+                  premise: draft.premise,
+                  premiseEn: draft.premiseEn,
+                  characters: draft.characters,
+                  tone: draft.tone,
+                  idea,
+                }
+              : novel,
+          ),
+        )
+        setActiveNovelId(existing.id)
+      } else {
+        const novel: Novel = {
+          id: `novel-${Date.now()}`,
+          title: draft.title,
+          titleEn: draft.titleEn,
+          premise: draft.premise,
+          premiseEn: draft.premiseEn,
+          characters: draft.characters,
+          tone: draft.tone,
+          totalEpisodes: 0,
+          episodes: [],
+          idea,
+          createdAt: Date.now(),
+        }
+        persistNovels([novel, ...novels])
+        setActiveNovelId(novel.id)
+      }
+      toast.success("Draft ရပြီ", {
+        description: draft.title,
       })
     } catch (error) {
       if (myRun !== genRunId.current) return
@@ -2729,7 +2869,9 @@ function AppShell() {
       (existing
         ? {
             title: existing.title,
+            titleEn: existing.titleEn ?? "",
             premise: existing.premise,
+            premiseEn: existing.premiseEn ?? "",
             characters: existing.characters,
             tone: existing.tone,
           }
@@ -2779,7 +2921,16 @@ function AppShell() {
         persistNovels(
           novels.map((novel) =>
             novel.id === existing.id
-              ? { ...novel, episodes: [...novel.episodes, episode] }
+              ? {
+                  ...novel,
+                  // A draft thread (totalEpisodes 0) gets its count when
+                  // Episode 1 starts; later episodes keep it.
+                  totalEpisodes:
+                    existing.totalEpisodes === 0
+                      ? last.totalEpisodes
+                      : existing.totalEpisodes,
+                  episodes: [...novel.episodes, episode],
+                }
               : novel,
           ),
         )
@@ -2788,16 +2939,21 @@ function AppShell() {
         const novel: Novel = {
           id: last.novelId,
           title: draft.title,
+          titleEn: draft.titleEn,
           premise: draft.premise,
+          premiseEn: draft.premiseEn,
           characters: draft.characters,
           tone: draft.tone,
           totalEpisodes: last.totalEpisodes,
           episodes: [episode],
+          idea: "",
           createdAt: Date.now(),
         }
         persistNovels([novel, ...novels])
         setActiveNovelId(novel.id)
       }
+      // Episode generation started from home lands on the reader (#67).
+      setMode("novel")
       toast.success("Episode ရပြီ", {
         description: `${draft.title} (Episode ${String(last.episodeNumber).padStart(2, "0")})`,
       })
@@ -2878,6 +3034,8 @@ function AppShell() {
       }
       persistBooks([book, ...books])
       setActiveBookId(book.id)
+      // Book generation started from home lands on the reader (#67).
+      setMode("book")
       setBookIssues(issues)
       toast.success("စာအုပ် ရပြီ", {
         description: book.title,
@@ -2902,12 +3060,18 @@ function AppShell() {
     void runNovelDrafts(idea)
   }
 
+  function handleRegenerateNovelDraft(idea: string) {
+    // Regenerate replaces the open draft thread (same id, new content).
+    void runNovelDrafts(idea, activeNovelId ?? undefined)
+  }
+
   function handleGenerateNovelEpisode1(
     draft: NovelDraft,
     totalEpisodes: number,
+    novelId?: string,
   ) {
     void runNovelEpisode({
-      novelId: `novel-${Date.now()}`,
+      novelId: novelId ?? `novel-${Date.now()}`,
       episodeNumber: 1,
       totalEpisodes,
       draft,
@@ -2950,353 +3114,11 @@ function AppShell() {
     })
   }
 
-  return (
-    <AnimatedSidebarProvider>
-      <AnimatedSidebar collapsible="offcanvas" panelClassName="bg-sidebar">
-        <AnimatedSidebarHeader>
-          <AnimatedSidebarMenu>
-            <AnimatedSidebarMenuItem>
-              <AnimatedSidebarMenuButton
-                closeOnSelect={false}
-                className="h-12 text-foreground"
-              >
-                <span className="flex items-center gap-2">
-                  <img
-                    src={logoUrl}
-                    alt="StoryFlow logo"
-                    className="size-8 shrink-0"
-                  />
-                  <span className="grid flex-1 text-left leading-tight">
-                    <span className="truncate font-medium">StoryFlow</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      Make your imagination happens
-                    </span>
-                  </span>
-                </span>
-              </AnimatedSidebarMenuButton>
-            </AnimatedSidebarMenuItem>
-          </AnimatedSidebarMenu>
-        </AnimatedSidebarHeader>
-        <AnimatedSidebarContent>
-          <AnimatedSidebarGroup>
-            <AnimatedSidebarMenu>
-              <AnimatedSidebarMenuItem>
-                <AnimatedSidebarMenuButton
-                  onSelect={() => {
-                    setModeModalOpen(true)
-                  }}
-                  icon={<PlusIcon className="size-4" />}
-                  className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
-                >
-                  <span>New story</span>
-                </AnimatedSidebarMenuButton>
-              </AnimatedSidebarMenuItem>
-            </AnimatedSidebarMenu>
-          </AnimatedSidebarGroup>
-          <AnimatedSidebarGroup>
-            <AnimatedSidebarGroupLabel>My Stories</AnimatedSidebarGroupLabel>
-            <AnimatedSidebarGroupContent>
-              <AnimatedSidebarMenu>
-                {threads.map((thread) => (
-                  <AnimatedSidebarMenuItem key={thread.id}>
-                    <AnimatedSidebarMenuButton
-                      isActive={activeThread?.id === thread.id}
-                      onSelect={() => { setMode("story"); showThread(thread); setShowGuide(false) }}
-                      icon={<FilmIcon className="size-4" />}
-                      className="pr-8"
-                    >
-                      <span className="truncate">{thread.title}</span>
-                    </AnimatedSidebarMenuButton>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <button
-                            type="button"
-                            aria-label="Story actions"
-                            className="absolute top-2 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0"
-                          />
-                        }
-                      >
-                        <EllipsisVerticalIcon />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start" className="w-auto">
-                        <DropdownMenuItem
-                          className="whitespace-nowrap"
-                          onClick={() => {
-                            setRenameThreadId(thread.id)
-                            setRenameValue(thread.title)
-                          }}
-                        >
-                          <PencilIcon />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="whitespace-nowrap"
-                          onClick={() => exportStory(thread)}
-                        >
-                          <DownloadIcon />
-                          Export prompts
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="whitespace-nowrap"
-                          variant="destructive"
-                          onClick={() => setDeleteThreadId(thread.id)}
-                        >
-                          <Trash2Icon />
-                          Delete story
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </AnimatedSidebarMenuItem>
-                ))}
-              </AnimatedSidebarMenu>
-            </AnimatedSidebarGroupContent>
-          </AnimatedSidebarGroup>
-        </AnimatedSidebarContent>
-        <AnimatedSidebarFooter>
-          {googleUser ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                {googleUser.picture ? (
-                  <img
-                    src={googleUser.picture}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    className="size-8 shrink-0 rounded-full"
-                  />
-                ) : null}
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {googleUser.name || googleUser.email}
-                  </p>
-                  {googleUser.name ? (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {googleUser.email}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {syncStatus === "syncing"
-                  ? "Syncing…"
-                  : syncStatus === "error"
-                    ? (syncError ?? "Sync failed — try again")
-                    : lastSyncedAt
-                      ? `Synced · ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                      : "Signed in"}
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void syncToDrive()}
-                  disabled={syncStatus === "syncing"}
-                >
-                  Sync now
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSignOutOpen(true)}
-                >
-                  Sign out
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                disabled={!googleReady}
-                onClick={signInGoogle}
-              >
-                Sign in with Google
-              </Button>
-              {googleLoadFailed ? (
-                <p className="text-xs text-muted-foreground">
-                  Google sign-in failed to load. Check your connection and
-                  reopen the app.
-                </p>
-              ) : null}
-            </div>
-          )}
-        </AnimatedSidebarFooter>
-      </AnimatedSidebar>
-
-      <AnimatedSidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sm:px-6">
-          <AnimatedSidebarTrigger className="size-11">
-            <PanelLeftIcon />
-          </AnimatedSidebarTrigger>
-          <h1 className="truncate text-base font-medium sm:text-lg">
-            {showGuide
-              ? "How to Use"
-              : mode === "novel"
-                ? (activeNovel?.title ?? "Novel Writer")
-                : mode === "book"
-                  ? (activeBook?.title ?? "Children Book Writer")
-                  : activeEpisode
-                    ? activeEpisode.title
-                    : "New story"}
-          </h1>
-          {mode === "story" && (
-          <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
-            {(activeEpisode
-              ? activeEpisode.aspect.split(" ")[0]
-              : ratio)}{" "}
-            · 10 scenes ×{" "}
-            {activeEpisode ? activeEpisode.sceneDuration : sceneDuration}s
-          </Badge>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant={showGuide ? "default" : "outline"}
-              aria-label="How to Use"
-              className="h-9"
-              onClick={() => setShowGuide(true)}
-            >
-              <BookOpenIcon />
-              <span className="hidden md:inline">How to Use</span>
-            </Button>
-            <ThemeToggle />
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Settings"
-              className="size-9"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <SettingsIcon />
-            </Button>
-          </div>
-        </header>
-
-        <main className={`mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 ${showGuide ? "lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden" : ""}`}>
-          {showGuide ? (
-            <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto">
-              <GuideView />
-            </div>
-          ) : mode === "novel" ? (
-            <NovelView
-              busy={busy}
-              novels={novels}
-              activeNovel={activeNovel}
-              drafts={novelDrafts}
-              onSelectNovel={selectNovel}
-              onDeleteNovel={deleteNovel}
-              onGenerateDrafts={handleGenerateNovelDrafts}
-              onGenerateEpisode1={handleGenerateNovelEpisode1}
-              onContinueNovel={handleContinueNovel}
-            />
-          ) : mode === "book" ? (
-            <BookView
-              busy={busy}
-              books={books}
-              activeBook={activeBook}
-              customCharacters={customBookChars}
-              bookIssues={bookIssues}
-              onSelectBook={selectBook}
-              onDeleteBook={deleteBook}
-              onSaveCustomCharacter={saveCustomBookCharacter}
-              onGenerateFixedBook={handleGenerateFixedBook}
-              onGenerateCustomBook={handleGenerateCustomBook}
-              toast={toast}
-            />
-          ) : (
-          <div className="grid grid-cols-1 gap-8">
-            {activeEpisode === null && (
-            <div className="flex min-w-0 flex-col">
-            <div className="flex min-w-0 flex-1 flex-col gap-8 p-4 sm:p-6">
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <SparklesIcon />
-                </EmptyMedia>
-                <EmptyTitle>ဇာတ်လမ်း idea တစ်ကြောင်း ရိုက်ထည့်ပါ</EmptyTitle>
-              </EmptyHeader>
-              <EmptyContent className="flex flex-row flex-wrap justify-center gap-2">
-                {GENRE_OPTIONS.filter((option) =>
-                  INTRO_GENRES.includes(option.value)
-                ).map((option) => (
-                  <Button
-                    key={option.value}
-                    variant={genre === option.value ? "default" : "outline"}
-                    size="sm"
-                    className="rounded-full"
-                    aria-pressed={genre === option.value}
-                    onClick={() => {
-                      setGenre(option.value)
-                      setIdea(INTRO_GENRE_PROMPTS[option.value] ?? "")
-                    }}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => {
-                    const candidates = RANDOM_IDEAS.filter(
-                      (entry) => entry.idea !== idea,
-                    )
-                    const list =
-                      candidates.length > 0 ? candidates : RANDOM_IDEAS
-                    const pick =
-                      list[Math.floor(Math.random() * list.length)]
-                    setGenre(pick.genre)
-                    setIdea(pick.idea)
-                  }}
-                >
-                  <ShuffleIcon />
-                  Random idea
-                </Button>
-              </EmptyContent>
-            </Empty>
-
-            {!activeKey && (
-            <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
-              <AlertIcon />
-              <AlertContent>
-              <AlertTitle>{provider === "openai" ? "OpenAI API key မထည့်ရသေးဘူး" : "Gemini API key မထည့်ရသေးဘူး"}</AlertTitle>
-              <AlertDescription>
-                {provider === "openai" ? "Generate လုပ်ဖို့ OpenAI API key တစ်ခု လိုတယ်။" : "Generate လုပ်ဖို့ free Google AI Studio key တစ်ခု လိုတယ်။"}
-                Key က ဒီ browser ထဲမှာပဲ နေမယ် — code ထဲ၊ server ပေါ်မှာ
-                ဘယ်တော့မှ မရောက်ဘူး။
-                <Button
-                  variant="link"
-                  className="h-auto px-1"
-                  onClick={() => setSettingsOpen(true)}
-                >
-                  Settings မှာ ထည့်ပါ
-                </Button>
-              </AlertDescription>
-              </AlertContent>
-            </Alert>
-            )}
-
-            <Card className="shrink-0 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]">
-              <CardHeader className="px-4 sm:px-6">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <CardTitle>Create Episode</CardTitle>
-                    <CardDescription>
-                      Idea, Genre, Visual Style ရွေးပြီး Generate နှိပ်ပါ။
-                    </CardDescription>
-                  </div>
-                  <Badge variant="secondary">{totalDuration} seconds</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-6 px-4 sm:px-6">
-                <Textarea
-                  value={idea}
-                  onChange={(event) => setIdea(event.target.value)}
-                  placeholder="ဥပမာ — အရိုးရှင်းဆုံး မိသားစု ဇာတ်လမ်းတစ်ခု ဖန်တီးပေးပါ"
-                  className="min-h-28 text-base leading-relaxed"
-                  aria-label="Story idea"
-                />
+  // Story settings for the home middle area (#67): moved verbatim
+  // from the old create view, minus the idea input and Generate
+  // button (home owns those through its bottom composer).
+  const storySettings = (
+    <>
                 <div className="flex flex-col gap-2">
                   <span className="text-sm font-medium">Genre</span>
                   <div className="flex flex-wrap gap-2">
@@ -3533,38 +3355,508 @@ function AppShell() {
                     Add background
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-            </div>
-            <div className="shrink-0 bg-background px-4 py-4 sm:px-6">
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    </>
+  )
+
+  // Key warning, shown at the top of the home page (all modes
+  // need a key; Enter with no key opens Settings instead).
+  const keyAlert = !activeKey ? (
+            <Alert className="rounded-lg bg-card px-2.5 py-2 text-card-foreground">
+              <AlertIcon />
+              <AlertContent>
+              <AlertTitle>{provider === "openai" ? "OpenAI API key မထည့်ရသေးဘူး" : "Gemini API key မထည့်ရသေးဘူး"}</AlertTitle>
+              <AlertDescription>
+                {provider === "openai" ? "Generate လုပ်ဖို့ OpenAI API key တစ်ခု လိုတယ်။" : "Generate လုပ်ဖို့ free Google AI Studio key တစ်ခု လိုတယ်။"}
+                Key က ဒီ browser ထဲမှာပဲ နေမယ် — code ထဲ၊ server ပေါ်မှာ
+                ဘယ်တော့မှ မရောက်ဘူး။
                 <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                  onClick={() => {
-                    setIdea("")
-                    setCustomGenre("")
-                    setCustomStyle("")
-                    setCharacters([])
-                    setBackgrounds([])
+                  variant="link"
+                  className="h-auto px-1"
+                  onClick={() => setSettingsOpen(true)}
+                >
+                  Settings မှာ ထည့်ပါ
+                </Button>
+              </AlertDescription>
+              </AlertContent>
+            </Alert>
+  ) : null
+
+  // Visible sidebar thread count for the filter empty state (#67).
+  const visibleThreadCount =
+    (threadFilter === "all" || threadFilter === "story"
+      ? threads.length
+      : 0) +
+    (threadFilter === "all" || threadFilter === "novel" ? novels.length : 0) +
+    (threadFilter === "all" || threadFilter === "book" ? books.length : 0)
+
+  // Home middle area (#67): the selected mode's settings. Story reuses
+  // the moved settings fragment + the sample preview; novel/book reuse
+  // their views embedded (no idea input, no Generate button — the home
+  // bottom composer owns those).
+  const homeMiddle =
+    homeMode === "story" ? (
+      <>
+        {storySettings}
+        <SampleView
+          sceneDuration={sceneDuration}
+          onCopy={copyPrompt}
+          toast={toast}
+        />
+      </>
+    ) : homeMode === "novel" ? (
+      <NovelView
+        busy={busy}
+        activeNovel={activeNovel}
+        onNewNovel={() => goHome("novel")}
+        onDeleteNovel={deleteNovel}
+        onGenerateDrafts={handleGenerateNovelDrafts}
+        onRegenerateDraft={handleRegenerateNovelDraft}
+        onGenerateEpisode1={handleGenerateNovelEpisode1}
+        onContinueNovel={handleContinueNovel}
+        embedded
+        resetSignal={resetSignal}
+        toast={toast}
+      />
+    ) : (
+      <BookView
+        busy={busy}
+        activeBook={activeBook}
+        customCharacters={customBookChars}
+        bookIssues={bookIssues}
+        onNewBook={() => goHome("book")}
+        onDeleteBook={deleteBook}
+        onSaveCustomCharacter={saveCustomBookCharacter}
+        onGenerateFixedBook={handleGenerateFixedBook}
+        onGenerateCustomBook={handleGenerateCustomBook}
+        picked={bookPicked}
+        onPickedChange={setBookPicked}
+        setupOpen={bookSetupOpen}
+        onSetupOpenChange={setBookSetupOpen}
+        embedded
+        resetSignal={resetSignal}
+        toast={toast}
+      />
+    )
+
+  const homeViewElement = (
+    <HomeView
+      selectedMode={homeMode}
+      onSelectMode={setHomeMode}
+      middle={homeMiddle}
+      keyAlert={keyAlert}
+      idea={idea}
+      onIdeaChange={setIdea}
+      onReset={handleHomeReset}
+      onRandom={handleHomeRandom}
+      onEnter={handleHomeEnter}
+      busy={busy}
+    />
+  )
+
+  return (
+    <AnimatedSidebarProvider>
+      <AnimatedSidebar collapsible="offcanvas" panelClassName="bg-sidebar">
+        <AnimatedSidebarHeader>
+          <AnimatedSidebarMenu>
+            <AnimatedSidebarMenuItem>
+              <AnimatedSidebarMenuButton
+                closeOnSelect={false}
+                className="h-12 text-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <img
+                    src={logoUrl}
+                    alt="StoryFlow logo"
+                    className="size-8 shrink-0"
+                  />
+                  <span className="grid flex-1 text-left leading-tight">
+                    <span className="truncate font-medium">StoryFlow</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Make your imagination happens
+                    </span>
+                  </span>
+                </span>
+              </AnimatedSidebarMenuButton>
+            </AnimatedSidebarMenuItem>
+          </AnimatedSidebarMenu>
+        </AnimatedSidebarHeader>
+        <AnimatedSidebarContent>
+          <AnimatedSidebarGroup>
+            <AnimatedSidebarMenu>
+              <AnimatedSidebarMenuItem>
+                <AnimatedSidebarMenuButton
+                  onSelect={() => {
+                    goHome()
+                  }}
+                  icon={<PlusIcon className="size-4" />}
+                  className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                >
+                  <span>New story</span>
+                </AnimatedSidebarMenuButton>
+              </AnimatedSidebarMenuItem>
+            </AnimatedSidebarMenu>
+          </AnimatedSidebarGroup>
+          {/* #67: the sidebar is the SINGLE universal thread list — one
+              entry per generated item, whatever its type. Home = create,
+              sidebar = all past threads. Distinct icon per type so rows
+              are distinguishable at a glance: story Film, novel BookOpen,
+              children book BookHeart, documentary Clapperboard. */}
+          <AnimatedSidebarGroup>
+            <AnimatedSidebarGroupLabel>Threads</AnimatedSidebarGroupLabel>
+            <AnimatedSidebarGroupContent>
+              <div className="px-2 pb-2">
+                <Select
+                  value={threadFilter}
+                  onValueChange={(value) => {
+                    const next = value as ThreadFilter
+                    setThreadFilter(next)
+                    try {
+                      localStorage.setItem(THREAD_FILTER_STORAGE, next)
+                    } catch {
+                      /* filter stays in memory for the session */
+                    }
                   }}
                 >
-                  Clear
+                  <SelectTrigger aria-label="Filter threads">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="story">Story</SelectItem>
+                    <SelectItem value="novel">Novel</SelectItem>
+                    <SelectItem value="book">Children Book</SelectItem>
+                    <SelectItem value="documentary">
+                      Documentary Explainer
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <AnimatedSidebarMenu>
+                {(threadFilter === "all" || threadFilter === "story") &&
+                  threads.map((thread) => (
+                    <AnimatedSidebarMenuItem key={thread.id}>
+                      <AnimatedSidebarMenuButton
+                        isActive={activeThread?.id === thread.id}
+                        onSelect={() => { setMode("story"); showThread(thread); setShowGuide(false) }}
+                        icon={<FilmIcon className="size-4" />}
+                        className="pr-8"
+                      >
+                        <span className="truncate">{thread.title}</span>
+                      </AnimatedSidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-label="Story actions"
+                              className="absolute top-2 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0"
+                            />
+                          }
+                        >
+                          <EllipsisVerticalIcon />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start" className="w-auto">
+                          <DropdownMenuItem
+                            className="whitespace-nowrap"
+                            onClick={() => {
+                              setRenameTarget({ kind: "story", id: thread.id })
+                              setRenameValue(thread.title)
+                            }}
+                          >
+                            <PencilIcon />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="whitespace-nowrap"
+                            onClick={() => exportStory(thread)}
+                          >
+                            <DownloadIcon />
+                            Export prompts
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="whitespace-nowrap"
+                            variant="destructive"
+                            onClick={() => setDeleteThreadId(thread.id)}
+                          >
+                            <Trash2Icon />
+                            Delete story
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </AnimatedSidebarMenuItem>
+                  ))}
+                {(threadFilter === "all" || threadFilter === "novel") &&
+                  [...novels]
+                    .sort((a, b) => b.createdAt - a.createdAt)
+                    .map((novel) => (
+                      <AnimatedSidebarMenuItem key={novel.id}>
+                        <AnimatedSidebarMenuButton
+                          isActive={activeNovelId === novel.id}
+                          onSelect={() => { setMode("novel"); setActiveNovelId(novel.id); setShowGuide(false) }}
+                          icon={<BookOpenIcon className="size-4" />}
+                          className="pr-8"
+                        >
+                          <span className="truncate">{novel.title}</span>
+                          {novel.episodes.length === 0 && (
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                              Draft
+                            </span>
+                          )}
+                        </AnimatedSidebarMenuButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <button
+                                type="button"
+                                aria-label="Novel actions"
+                                className="absolute top-2 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0"
+                              />
+                            }
+                          >
+                            <EllipsisVerticalIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start" className="w-auto">
+                            <DropdownMenuItem
+                              className="whitespace-nowrap"
+                              onClick={() => {
+                                setRenameTarget({ kind: "novel", id: novel.id })
+                                setRenameValue(novel.title)
+                              }}
+                            >
+                              <PencilIcon />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="whitespace-nowrap"
+                              variant="destructive"
+                              onClick={() => setSidebarDelete({ kind: "novel", id: novel.id, title: novel.title })}
+                            >
+                              <Trash2Icon />
+                              Delete novel
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </AnimatedSidebarMenuItem>
+                    ))}
+                {(threadFilter === "all" || threadFilter === "book") &&
+                  [...books]
+                    .sort((a, b) => b.createdAt - a.createdAt)
+                    .map((book) => (
+                      <AnimatedSidebarMenuItem key={book.id}>
+                        <AnimatedSidebarMenuButton
+                          isActive={activeBookId === book.id}
+                          onSelect={() => { setMode("book"); setActiveBookId(book.id); setBookIssues([]); setShowGuide(false) }}
+                          icon={<BookHeartIcon className="size-4" />}
+                          className="pr-8"
+                        >
+                          <span className="truncate">{book.title}</span>
+                        </AnimatedSidebarMenuButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <button
+                                type="button"
+                                aria-label="Book actions"
+                                className="absolute top-2 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0"
+                              />
+                            }
+                          >
+                            <EllipsisVerticalIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start" className="w-auto">
+                            <DropdownMenuItem
+                              className="whitespace-nowrap"
+                              onClick={() => {
+                                setRenameTarget({ kind: "book", id: book.id })
+                                setRenameValue(book.title)
+                              }}
+                            >
+                              <PencilIcon />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="whitespace-nowrap"
+                              variant="destructive"
+                              onClick={() => setSidebarDelete({ kind: "book", id: book.id, title: book.title })}
+                            >
+                              <Trash2Icon />
+                              Delete book
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </AnimatedSidebarMenuItem>
+                    ))}
+                {visibleThreadCount === 0 && (
+                  <p className="px-2 py-2 text-sm text-muted-foreground">
+                    {threadFilter === "documentary"
+                      ? "Documentary threads don't exist yet — coming soon."
+                      : "Nothing here yet."}
+                  </p>
+                )}
+              </AnimatedSidebarMenu>
+            </AnimatedSidebarGroupContent>
+          </AnimatedSidebarGroup>
+        </AnimatedSidebarContent>
+        <AnimatedSidebarFooter>
+          {googleUser ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                {googleUser.picture ? (
+                  <img
+                    src={googleUser.picture}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="size-8 shrink-0 rounded-full"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {googleUser.name || googleUser.email}
+                  </p>
+                  {googleUser.name ? (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {googleUser.email}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {syncStatus === "syncing"
+                  ? "Syncing…"
+                  : syncStatus === "error"
+                    ? (syncError ?? "Sync failed — try again")
+                    : lastSyncedAt
+                      ? `Synced · ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                      : "Signed in"}
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void syncToDrive()}
+                  disabled={syncStatus === "syncing"}
+                >
+                  Sync now
                 </Button>
                 <Button
-                  size="lg"
-                  className="w-full sm:w-auto"
-                  disabled={busy}
-                  onClick={handleGenerate}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSignOutOpen(true)}
                 >
-                  <SparklesIcon />
-                  {generating ? "Generating…" : "Generate Episode"}
+                  Sign out
                 </Button>
               </div>
             </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={!googleReady}
+                onClick={signInGoogle}
+              >
+                Sign in with Google
+              </Button>
+              {googleLoadFailed ? (
+                <p className="text-xs text-muted-foreground">
+                  Google sign-in failed to load. Check your connection and
+                  reopen the app.
+                </p>
+              ) : null}
             </div>
-            )}
+          )}
+        </AnimatedSidebarFooter>
+      </AnimatedSidebar>
+
+      <AnimatedSidebarInset>
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sm:px-6">
+          <AnimatedSidebarTrigger className="size-11">
+            <PanelLeftIcon />
+          </AnimatedSidebarTrigger>
+          <h1 className="truncate text-base font-medium sm:text-lg">
+            {showGuide
+              ? "How to Use"
+              : mode === "home"
+                ? "New story"
+                : mode === "novel"
+                  ? (activeNovel?.title ?? "Novel Writer")
+                  : mode === "book"
+                    ? (activeBook?.title ?? "Children Book Writer")
+                    : activeEpisode
+                      ? activeEpisode.title
+                      : "New story"}
+          </h1>
+          {mode === "story" && (
+          <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
+            {(activeEpisode
+              ? activeEpisode.aspect.split(" ")[0]
+              : ratio)}{" "}
+            · 10 scenes ×{" "}
+            {activeEpisode ? activeEpisode.sceneDuration : sceneDuration}s
+          </Badge>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant={showGuide ? "default" : "outline"}
+              aria-label="How to Use"
+              className="h-9"
+              onClick={() => setShowGuide(true)}
+            >
+              <BookOpenIcon />
+              <span className="hidden md:inline">How to Use</span>
+            </Button>
+            <ThemeToggle />
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Settings"
+              className="size-9"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <SettingsIcon />
+            </Button>
+          </div>
+        </header>
+
+        <main className={`mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 ${showGuide ? "lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden" : ""}`}>
+          {showGuide ? (
+            <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto">
+              <GuideView />
+            </div>
+          ) : mode === "novel" ? (
+            <NovelView
+              busy={busy}
+              activeNovel={activeNovel}
+              onNewNovel={() => goHome("novel")}
+              onDeleteNovel={deleteNovel}
+              onGenerateDrafts={handleGenerateNovelDrafts}
+              onRegenerateDraft={handleRegenerateNovelDraft}
+              onGenerateEpisode1={handleGenerateNovelEpisode1}
+              onContinueNovel={handleContinueNovel}
+              toast={toast}
+            />
+          ) : mode === "book" ? (
+            <BookView
+              busy={busy}
+              activeBook={activeBook}
+              customCharacters={customBookChars}
+              bookIssues={bookIssues}
+              onNewBook={() => goHome("book")}
+              onDeleteBook={deleteBook}
+              onSaveCustomCharacter={saveCustomBookCharacter}
+              onGenerateFixedBook={handleGenerateFixedBook}
+              onGenerateCustomBook={handleGenerateCustomBook}
+              picked={bookPicked}
+              onPickedChange={setBookPicked}
+              setupOpen={bookSetupOpen}
+              onSetupOpenChange={setBookSetupOpen}
+              toast={toast}
+            />
+          ) : (
+          <div className="grid grid-cols-1 gap-8">
             <div className="flex min-w-0 flex-col">
             {activeEpisode && activeThread && (
               <div className="sticky top-14 z-10 flex shrink-0 flex-col gap-4 border-b bg-background px-4 py-4 sm:px-6">
@@ -3738,7 +4030,7 @@ function AppShell() {
                 onOpenSectionChange={setOpenSection}
               />
             ) : (
-            <SampleView sceneDuration={sceneDuration} onCopy={copyPrompt} toast={toast} />
+              homeViewElement
             )}
             </div>
             </div>
@@ -3757,76 +4049,6 @@ function AppShell() {
         onClose={() => setGenError(null)}
         onRetry={retryGen}
       />
-
-      {/* Mode selector: every "New story" entry opens this. Story Creator
-          is the existing create view; Novel/Book open their new views;
-          Documentary Explainer is listed but disabled (built later). */}
-      <CenterMorphModal open={modeModalOpen} onOpenChange={setModeModalOpen}>
-        <CenterMorphModalContent ariaLabel="Mode ရွေးပါ" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-md">
-          <div className="flex flex-col gap-3 pr-10">
-            <h2 className="text-base leading-none font-medium">
-              ဘာလုပ်ချင်လဲ?
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Mode တစ်ခုရွေးပါ။
-            </p>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              size="lg"
-              className="justify-start"
-              onClick={() => {
-                setMode("story")
-                showEpisode(null)
-                setShowGuide(false)
-                setModeModalOpen(false)
-              }}
-            >
-              <ClapperboardIcon />
-              Story Creator
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="justify-start"
-              onClick={() => {
-                setMode("novel")
-                setShowGuide(false)
-                setModeModalOpen(false)
-              }}
-            >
-              <BookOpenIcon />
-              Novel Writer
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="justify-start"
-              onClick={() => {
-                setMode("book")
-                setShowGuide(false)
-                setModeModalOpen(false)
-              }}
-            >
-              <SparklesIcon />
-              Children Book Writer
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="justify-start"
-              disabled
-            >
-              <FilmIcon />
-              Documentary Explainer
-              <Badge variant="secondary" className="ml-auto">
-                Coming soon
-              </Badge>
-            </Button>
-          </div>
-        </CenterMorphModalContent>
-      </CenterMorphModal>
 
       <CenterMorphModal open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
         <CenterMorphModalContent ariaLabel={editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"} ariaDescribedBy="character-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl">
@@ -4147,6 +4369,49 @@ function AppShell() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog
+        open={sidebarDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setSidebarDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {sidebarDelete?.kind === "novel"
+                ? "Novel ကို ဖျက်မှာလား?"
+                : "Book ကို ဖျက်မှာလား?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {sidebarDelete
+                ? `“${sidebarDelete.title}” ကို အပြီးဖျက်သွားမယ်။ ဒါကို ပြန်မရနိုင်ဘူး။`
+                : "ဒါကို အပြီးဖျက်သွားမယ်။ ပြန်မရနိုင်ဘူး။"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="lg">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              size="lg"
+              onClick={() => {
+                if (sidebarDelete) {
+                  if (sidebarDelete.kind === "novel") {
+                    deleteNovel(sidebarDelete.id)
+                    toast.success("Novel deleted")
+                  } else {
+                    deleteBook(sidebarDelete.id)
+                    toast.success("Book deleted")
+                  }
+                }
+                setSidebarDelete(null)
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={signOutOpen} onOpenChange={setSignOutOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -4174,17 +4439,18 @@ function AppShell() {
       </AlertDialog>
 
       <CenterMorphModal
-        open={renameThreadId !== null}
+        open={renameTarget !== null}
         onOpenChange={(open: boolean) => {
-          if (!open) setRenameThreadId(null)
+          if (!open) setRenameTarget(null)
         }}
       >
-        <CenterMorphModalContent ariaLabel="Story နာမည် ပြောင်းမယ်" ariaDescribedBy="rename-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-sm">
+        <CenterMorphModalContent ariaLabel="နာမည် ပြောင်းမယ်" ariaDescribedBy="rename-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-sm">
           <div className="flex flex-col gap-3 pr-10">
-            <h2 className="text-base leading-none font-medium">Story နာမည် ပြောင်းမယ်</h2>
+            <h2 className="text-base leading-none font-medium">{renameTarget?.kind === "novel" ? "Novel နာမည် ပြောင်းမယ်" : renameTarget?.kind === "book" ? "Book နာမည် ပြောင်းမယ်" : "Story နာမည် ပြောင်းမယ်"}</h2>
             <p id="rename-desc" className="text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
-              Sidebar မှာ ပြမယ့် နာမည်ပါ — episode တွေရဲ့ နာမည်က
-              မပြောင်းဘူး။
+              {renameTarget?.kind === "story"
+                ? "Sidebar မှာ ပြမယ့် နာမည်ပါ — episode တွေရဲ့ နာမည်က မပြောင်းဘူး။"
+                : "Sidebar မှာ ပြမယ့် နာမည်ပါ။"}
             </p>
           </div>
           <form
@@ -4192,13 +4458,33 @@ function AppShell() {
             onSubmit={(event) => {
               event.preventDefault()
               const name = renameValue.trim()
-              if (!renameThreadId || !name) return
-              persistThreadTitles({
-                ...threadTitles,
-                [renameThreadId]: name,
-              })
-              setRenameThreadId(null)
-              toast.success("Story renamed")
+              if (!renameTarget || !name) return
+              if (renameTarget.kind === "story") {
+                persistThreadTitles({
+                  ...threadTitles,
+                  [renameTarget.id]: name,
+                })
+                toast.success("Story renamed")
+              } else if (renameTarget.kind === "novel") {
+                persistNovels(
+                  novels.map((novel) =>
+                    novel.id === renameTarget.id
+                      ? { ...novel, title: name }
+                      : novel,
+                  ),
+                )
+                toast.success("Novel renamed")
+              } else {
+                persistBooks(
+                  books.map((book) =>
+                    book.id === renameTarget.id
+                      ? { ...book, title: name }
+                      : book,
+                  ),
+                )
+                toast.success("Book renamed")
+              }
+              setRenameTarget(null)
             }}
           >
             <Input
