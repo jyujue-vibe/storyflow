@@ -834,7 +834,7 @@ export const AnimatedSidebarMenu = forwardRef<
       as="ul"
       inset={0}
       pillClassName="rounded-xl bg-muted/70"
-      pillContainerClassName="inset-y-auto top-0 h-9"
+      pillContainerClassName="inset-y-0"
       data-slot="sidebar-menu"
       className={cn("flex w-full min-w-0 list-none flex-col gap-0.5", className)}
     >
