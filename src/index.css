@@ -208,6 +208,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Tailwind v4 preflight sets buttons to cursor: default, so every
+     clickable button showed an arrow on hover. Restore the hand cursor
+     on enabled buttons and role=button elements (base layer, so an
+     explicit cursor-* utility still wins, e.g. disabled not-allowed). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
   body {
     @apply bg-background font-sans text-foreground;
     /* JJ's Inter Display feature settings (batmanUX, 2026-10-17) —
@@ -253,4 +261,14 @@
 }
 *::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+}
+
+/* Generation modal backdrop drift (gradient-floor-style, pure CSS). */
+@keyframes gen-drift {
+  from {
+    transform: translate3d(-6%, 3%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, -4%, 0) scale(1.12);
+  }
 }
