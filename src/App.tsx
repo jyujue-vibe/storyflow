@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { ReactLenis } from "lenis/react"
+import "lenis/dist/lenis.css"
 import { ThemeProvider, useTheme } from "next-themes"
 import {
   AnimatedToastStack,
@@ -4582,10 +4584,21 @@ function AppShell() {
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <TooltipProvider delay={0}>
-        <AppShell />
-      </TooltipProvider>
-    </ThemeProvider>
+    <ReactLenis
+      root
+      options={{
+        autoRaf: true,
+        // Sidebar thread list + other overflow-y-auto areas must keep
+        // scrolling natively when the pointer is over them; without this,
+        // wheel over the sidebar would scroll the window instead.
+        allowNestedScroll: true,
+      }}
+    >
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider delay={0}>
+          <AppShell />
+        </TooltipProvider>
+      </ThemeProvider>
+    </ReactLenis>
   )
 }
