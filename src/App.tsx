@@ -18,6 +18,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   FilmIcon,
+  LayoutGridIcon,
   MoonIcon,
   PanelLeftIcon,
   PencilIcon,
@@ -3676,31 +3677,45 @@ function AppShell() {
             <AnimatedSidebarGroupLabel>Threads</AnimatedSidebarGroupLabel>
             <AnimatedSidebarGroupContent>
               <div className="px-2 pb-2">
-                <Select
-                  value={threadFilter}
-                  onValueChange={(value) => {
-                    const next = value as ThreadFilter
-                    setThreadFilter(next)
-                    try {
-                      localStorage.setItem(THREAD_FILTER_STORAGE, next)
-                    } catch {
-                      /* filter stays in memory for the session */
-                    }
-                  }}
+                {/* #82: icon-only filter group (replaces the All dropdown).
+                    Same five filters, same persistence — icons match the
+                    thread-row icons, so each button reads as its type at
+                    a glance. Active button is solid, the rest are ghost. */}
+                <div
+                  role="group"
+                  aria-label="Filter threads"
+                  className="flex gap-1"
                 >
-                  <SelectTrigger aria-label="Filter threads">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="story">Story</SelectItem>
-                    <SelectItem value="novel">Novel</SelectItem>
-                    <SelectItem value="book">Children Book</SelectItem>
-                    <SelectItem value="documentary">
-                      Documentary Explainer
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  {(
+                    [
+                      { value: "all", label: "All threads", icon: LayoutGridIcon },
+                      { value: "story", label: "Story only", icon: FilmIcon },
+                      { value: "novel", label: "Novel only", icon: BookOpenIcon },
+                      { value: "book", label: "Children Book only", icon: BookHeartIcon },
+                      { value: "documentary", label: "Documentary Explainer only", icon: ClapperboardIcon },
+                    ] as const
+                  ).map(({ value, label, icon: Icon }) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant={threadFilter === value ? "default" : "ghost"}
+                      size="icon"
+                      aria-label={label}
+                      aria-pressed={threadFilter === value}
+                      title={label}
+                      onClick={() => {
+                        setThreadFilter(value)
+                        try {
+                          localStorage.setItem(THREAD_FILTER_STORAGE, value)
+                        } catch {
+                          /* filter stays in memory for the session */
+                        }
+                      }}
+                    >
+                      <Icon className="size-4" />
+                    </Button>
+                  ))}
+                </div>
               </div>
               <AnimatedSidebarMenu>
                 {(threadFilter === "all" || threadFilter === "story") &&
