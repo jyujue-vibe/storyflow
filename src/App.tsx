@@ -2533,9 +2533,10 @@ function AppShell() {
   const [genKind, setGenKind] = useState<GenerationKind>("generate")
   const [genError, setGenError] = useState<string | null>(null)
   const [genSlow, setGenSlow] = useState(false)
-  // #79: the generation modal is the EXPANDED view of the player bar.
-  // While generating, the bar shows and the modal stays hidden until the
-  // user expands it; any error re-opens the modal (effect below).
+  // #79/#80: the generation modal shows FIRST; the player bar is the
+  // MINIMIZED view, reached only via the modal's hide button (or back to
+  // the modal via the bar's expand button). Any error re-opens the modal
+  // (effect below).
   const [genModalVisible, setGenModalVisible] = useState(false)
   const genBarVisible = generating && genError === null && !genModalVisible
 
@@ -2586,7 +2587,9 @@ function AppShell() {
     setGenKind(kind)
     setGenError(null)
     setGenSlow(false)
-    setGenModalVisible(false)
+    // #80: the modal shows FIRST on every generation; the user hides it
+    // with the hide button to get the player bar.
+    setGenModalVisible(true)
     genController.current = new AbortController()
     genRunId.current += 1
     const myRun = genRunId.current
@@ -4219,7 +4222,7 @@ function AppShell() {
         {genBarVisible ? (
           <div
             aria-hidden="true"
-            className="h-[calc(4rem+env(safe-area-inset-bottom))]"
+            className="h-[calc(4.75rem+env(safe-area-inset-bottom))]"
           />
         ) : null}
       </AnimatedSidebarInset>
