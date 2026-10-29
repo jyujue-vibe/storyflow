@@ -36,6 +36,21 @@ export interface EpisodeBackground {
   text: string
 }
 
+/**
+ * One background generation prompt, grouped for the episode view: either a
+ * dedicated block from the new §6 Background Prompts section, or the
+ * per-scene background texts of an old-format episode grouped by BG ID.
+ * `scenes` lists every scene that uses this background (for the accordion
+ * subtitle). `bgId` is "" when the source text names no BG ID (scene
+ * fallback) — then `name` is the scene label.
+ */
+export interface EpisodeBackgroundPrompt {
+  bgId: string
+  name: string
+  scenes: number[]
+  text: string
+}
+
 export interface StoryRecord {
   title: string
   genre: string
@@ -60,6 +75,7 @@ export interface Episode {
   sheetPrompts: { charId: string; text: string }[]
   backgroundSheets: { bgId: string; text: string }[]
   backgrounds: EpisodeBackground[]
+  backgroundPrompts: EpisodeBackgroundPrompt[]
   location: string
   scenes: EpisodeScene[]
   prompts: ScenePrompt[]
@@ -333,6 +349,71 @@ function parsePlan(
   return { location, backgrounds, scenes }
 }
 
+/**
+ * Shared chunk cleanup for prompt blocks: drop fences, a leading
+ * timestamp-only line, and trailing junk. The timestamp line often carries
+ * a leading dash ("— (00:16 - 00:24)"), which the old strip missed.
+ */
+function cleanPromptChunk(rawChunk: string): string {
+  let text = stripFences(rawChunk)
+  text = text
+    .replace(
+      /^[–—-]?\s*\(?\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)?\s*[:：\-–—]?\s*\n?/,
+      "",
+    )
+    .trim()
+  return stripTrailingJunk(text)
+}
+
+/**
+ * Drop lines that may only be trailing junk at the end of a prompt chunk:
+ * a horizontal rule, or a scene header that leaked in when the model
+ * started the next scene without a prompt header (e.g. "---" followed by
+ * "#### Scene 4 (00:24 - 00:32)" at the end of a video block). Only
+ * trailing lines are popped, so a "Scene N" mention inside the prompt
+ * body is never touched.
+ */
+function stripTrailingJunk(text: string): string {
+  const lines = text.split("\n")
+  while (lines.length > 0) {
+    const line = lines[lines.length - 1].trim()
+    if (!line) {
+      lines.pop()
+      continue
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
+      lines.pop()
+      continue
+    }
+    if (/^#{1,6}\s+Scene\s+0?\d{1,2}\b/i.test(line)) {
+      lines.pop()
+      continue
+    }
+    if (
+      /^Scene\s+0?\d{1,2}\s*\(\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)\s*$/.test(
+        line,
+      )
+    ) {
+      lines.pop()
+      continue
+    }
+    break
+  }
+  return lines.join("\n").trim()
+}
+
+/**
+ * Prefix bare CHAR_/BG_ IDs with @ for Flow-style references
+ * ("CHAR_001" → "@CHAR_001"), normalizing to 3 digits. Already-prefixed
+ * IDs are left alone, so this never produces "@@".
+ */
+function addMentions(text: string): string {
+  return text.replace(
+    /(?<!@)\b(CHAR|BG)_(\d{1,3})\b/g,
+    (_, kind: string, num: string) => `@${kind}_${num.padStart(3, "0")}`,
+  )
+}
+
 function parsePrompts(section: string, duration: number): ScenePrompt[] {
   const header = /(?:🎨|🎬|🏡)?\s*(IMAGE|VIDEO|BACKGROUND)\s+PROMPT\s+0?(\d{1,2})/gi
   const matches = [...section.matchAll(header)]
@@ -346,14 +427,7 @@ function parsePrompts(section: string, duration: number): ScenePrompt[] {
     const chunkStart = (match.index ?? 0) + match[0].length
     const chunkEnd = matches[index + 1]?.index ?? section.length
     const rawChunk = section.slice(chunkStart, chunkEnd)
-    let text = stripFences(rawChunk)
-    // Drop a leading timestamp-only line ("00:00–00:08" or "(00:00–00:08)").
-    text = text
-      .replace(
-        /^\(?\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)?\s*[:：\-–—]?\s*\n?/,
-        "",
-      )
-      .trim()
+    const text = cleanPromptChunk(rawChunk)
     const entry = byNumber.get(number) ?? {
       image: "",
       background: "",
@@ -374,13 +448,131 @@ function parsePrompts(section: string, duration: number): ScenePrompt[] {
       const range = source.match(/(\d{1,2}:\d{2})\s*[–—-]\s*(\d{1,2}:\d{2})/)
       return {
         number,
-        image: entry.image,
+        // @-mentions apply to image + video prompts only; background
+        // prompt texts keep their IDs as written.
+        image: addMentions(entry.image),
         background: entry.background,
-        video: entry.video,
+        video: addMentions(entry.video),
         start: range ? mmssToSeconds(range[1]) : (number - 1) * duration,
         end: range ? mmssToSeconds(range[2]) : number * duration,
       }
     })
+}
+
+/** Parse a "01–10", "03, 05" style scene list into sorted scene numbers. */
+function parseSceneList(raw: string): number[] {
+  const out = new Set<number>()
+  for (const part of raw.split(",")) {
+    const token = part.trim()
+    if (!token) continue
+    const range = token.match(/(\d{1,2})\s*[–—-]\s*(\d{1,2})/)
+    if (range) {
+      const start = Math.max(1, parseInt(range[1], 10))
+      const end = Math.min(10, parseInt(range[2], 10))
+      for (let n = start; n <= end; n++) out.add(n)
+    } else {
+      const single = token.match(/(\d{1,2})/)
+      if (single) {
+        const n = parseInt(single[1], 10)
+        if (n >= 1 && n <= 10) out.add(n)
+      }
+    }
+  }
+  return [...out].sort((a, b) => a - b)
+}
+
+/**
+ * Extract the new-format §6 Background Prompts blocks
+ * ("BACKGROUND PROMPT — BG_001 Name (Scenes 01–10)" + text) and return
+ * them plus the section with those blocks removed, so parsePrompts never
+ * sees them inside a video chunk. Old per-scene "BACKGROUND PROMPT 03"
+ * headers do NOT match (they carry digits, not a BG ID), so old-format
+ * sections pass through untouched.
+ */
+function extractBackgroundPrompts(section: string): {
+  blocks: EpisodeBackgroundPrompt[]
+  cleaned: string
+} {
+  const bgHeader =
+    /BACKGROUND\s+PROMPT\s*[:：—–-]?\s*BG_(\d{1,3})\s+([^\n(]+)\s*(?:\(\s*Scenes?\s+([^)]+)\))?/gi
+  const promptHeader =
+    /(?:🎨|🎬|🏡)?\s*(IMAGE|VIDEO|BACKGROUND)\s+PROMPT\s+0?(\d{1,2})/gi
+  const bgMatches = [...section.matchAll(bgHeader)]
+  if (bgMatches.length === 0) return { blocks: [], cleaned: section }
+  const promptMatches = [...section.matchAll(promptHeader)]
+  const boundaries = [
+    ...bgMatches.map((m) => m.index ?? 0),
+    ...promptMatches.map((m) => m.index ?? 0),
+  ].sort((a, b) => a - b)
+  const blocks: EpisodeBackgroundPrompt[] = []
+  const removeRanges: [number, number][] = []
+  bgMatches.forEach((match) => {
+    const start = match.index ?? 0
+    const chunkStart = start + match[0].length
+    const nextBoundary = boundaries.find((b) => b > start) ?? section.length
+    const text = cleanPromptChunk(section.slice(chunkStart, nextBoundary))
+    if (!text) return
+    const num = match[1].padStart(3, "0")
+    blocks.push({
+      bgId: `BG_${num}`,
+      name: (match[2] ?? "").trim(),
+      scenes: match[3] ? parseSceneList(match[3]) : [],
+      text,
+    })
+    removeRanges.push([start, nextBoundary])
+  })
+  let cleaned = section
+  for (const [start, end] of removeRanges.sort((a, b) => b[0] - a[0])) {
+    cleaned = cleaned.slice(0, start) + cleaned.slice(end)
+  }
+  return { blocks, cleaned }
+}
+
+/**
+ * Group old-format per-scene background texts by BG ID (first occurrence's
+ * text wins; scenes accumulate). Texts naming no BG ID are kept under
+ * their own scene so nothing is lost. Used for episodes parsed before the
+ * Background Prompts section existed, and as a fallback wherever a
+ * stored episode has no backgroundPrompts field.
+ */
+export function groupBackgroundPrompts(
+  prompts: ScenePrompt[],
+): EpisodeBackgroundPrompt[] {
+  const byBg = new Map<string, EpisodeBackgroundPrompt>()
+  for (const prompt of [...prompts].sort((a, b) => a.number - b.number)) {
+    const text = (prompt.background ?? "").trim()
+    if (!text) continue
+    const idMatch = text.match(/\bBG_(\d{1,3})\b/)
+    if (idMatch) {
+      const bgId = `BG_${idMatch[1].padStart(3, "0")}`
+      const bracketName = text.match(/\[\s*BG_\d+\s+([^,\]\n]+)/)?.[1]?.trim()
+      const plainName = text.match(/BG_\d+\s+([^,\n]+)/)?.[1]?.trim()
+      const existing = byBg.get(bgId)
+      if (existing) {
+        if (!existing.scenes.includes(prompt.number)) {
+          existing.scenes.push(prompt.number)
+        }
+      } else {
+        byBg.set(bgId, {
+          bgId,
+          name: bracketName || plainName || bgId,
+          scenes: [prompt.number],
+          text,
+        })
+      }
+    } else {
+      const key = `scene-${prompt.number}`
+      byBg.set(key, {
+        bgId: "",
+        name: `Scene ${String(prompt.number).padStart(2, "0")}`,
+        scenes: [prompt.number],
+        text,
+      })
+    }
+  }
+  return [...byBg.values()]
+    .map((g) => ({ ...g, scenes: [...g.scenes].sort((a, b) => a - b) }))
+    .sort((a, b) => (a.scenes[0] ?? 99) - (b.scenes[0] ?? 99))
 }
 
 function splitNoteAndHook(section: string): {
@@ -464,8 +656,30 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
     sceneDuration,
   )
 
-  // §6 — Scene Prompts
-  const prompts = parsePrompts(promptsSection, sceneDuration)
+  // §6 — Scene Prompts + Background Prompts. New-format background
+  // blocks are extracted (and removed) first so they never pollute a
+  // video chunk; old per-scene backgrounds are grouped by BG ID.
+  const { blocks: bgBlocks, cleaned: cleanedPromptsSection } =
+    extractBackgroundPrompts(promptsSection)
+  const prompts = parsePrompts(cleanedPromptsSection, sceneDuration)
+  for (const block of bgBlocks) {
+    if (block.scenes.length === 0) {
+      // No scene list in the header: attribute by BG mention in the
+      // scene's image/video text.
+      block.scenes = prompts
+        .filter((p) => new RegExp(`\\b${block.bgId}\\b`).test(`${p.image}\n${p.video}`))
+        .map((p) => p.number)
+    } else {
+      block.scenes = [...block.scenes].sort((a, b) => a - b)
+    }
+  }
+  const coveredBg = new Set(bgBlocks.map((b) => b.bgId))
+  const oldGroups = groupBackgroundPrompts(prompts).filter(
+    (g) => g.bgId === "" || !coveredBg.has(g.bgId),
+  )
+  const backgroundPrompts = [...bgBlocks, ...oldGroups].sort(
+    (a, b) => (a.scenes[0] ?? 99) - (b.scenes[0] ?? 99),
+  )
 
   // §7 — Continuity Note & Hook
   const { note: continuityNote, hook } = splitNoteAndHook(noteSection)
@@ -505,10 +719,15 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
       `Character sheet ${sheetPrompts.length} ခု တွေ့တယ်၊ character ${characters.length} ယောက် ရှိတယ်။`,
     )
   }
-  // Background prompts are new: old outputs have none, so only a partial
-  // set is an issue (0 = old format, still usable).
+  // Per-scene background prompts are the old format: a partial set is
+  // only an issue when no new-format Background Prompts section exists
+  // (new-format outputs carry 0 per-scene backgrounds by design).
   const backgroundCount = prompts.filter((p) => p.background).length
-  if (backgroundCount > 0 && backgroundCount < 10) {
+  if (
+    bgBlocks.length === 0 &&
+    backgroundCount > 0 &&
+    backgroundCount < 10
+  ) {
     issues.push(
       `Background prompt ${backgroundCount} ခုပဲ တွေ့တယ် (10 ခု လိုတယ်)။`,
     )
@@ -557,6 +776,7 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
       sheetPrompts,
       backgroundSheets,
       backgrounds,
+      backgroundPrompts,
       location,
       scenes,
       prompts,
