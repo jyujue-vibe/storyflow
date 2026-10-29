@@ -446,6 +446,25 @@ function stripTrailingJunk(text: string): string {
       lines.pop()
       continue
     }
+    // Bold-wrapped scene header leaked from the next scene (OpenAI style:
+    // "**Scene 2 (00:08–00:16)**"). None of the rules above match it: it
+    // starts with "**", so it is not a # header, not a bare "Scene N"
+    // header, and not a marker line (it contains letters). Strip the bold
+    // markers first, then test the same header shapes — inline bold inside
+    // real content never matches these full-line shapes, so it is kept.
+    const unbolded = line.replace(/^\*\*\s*/, "").replace(/\s*\*\*$/, "")
+    if (unbolded !== line) {
+      if (
+        /^#{1,6}\s+Scene\s+0?\d{1,2}\b/i.test(unbolded) ||
+        /^Scene\s+0?\d{1,2}\s*\(\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)\s*$/.test(
+          unbolded,
+        ) ||
+        /^Scene\s+0?\d{1,2}\s*$/.test(unbolded)
+      ) {
+        lines.pop()
+        continue
+      }
+    }
     if (/^#{1,6}\s+Scene\s+0?\d{1,2}\b/i.test(line)) {
       lines.pop()
       continue
