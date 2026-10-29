@@ -3680,11 +3680,12 @@ function AppShell() {
                 {/* #82: icon-only filter group (replaces the All dropdown).
                     Same five filters, same persistence — icons match the
                     thread-row icons, so each button reads as its type at
-                    a glance. Active button is solid, the rest are ghost. */}
+                    a glance. Active button is solid, the rest are ghost.
+                    #83: full-width row, buttons share the width equally. */}
                 <div
                   role="group"
                   aria-label="Filter threads"
-                  className="flex gap-1"
+                  className="flex w-full gap-1"
                 >
                   {(
                     [
@@ -3700,6 +3701,7 @@ function AppShell() {
                       type="button"
                       variant={threadFilter === value ? "default" : "ghost"}
                       size="icon"
+                      className="flex-1"
                       aria-label={label}
                       aria-pressed={threadFilter === value}
                       title={label}
