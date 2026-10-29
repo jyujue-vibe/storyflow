@@ -207,9 +207,10 @@ function DraftWorkspace({
               onClick={() =>
                 onGenerateEpisode1(draft, totalEpisodes, novelId)
               }
+              className="shiny-btn"
             >
               <SparklesIcon />
-              {busy ? "Generating…" : "Generate Episode 1"}
+              <span>{busy ? "Generating…" : "Generate Episode 1"}</span>
             </Button>
           </CardFooter>
         </Card>
@@ -516,9 +517,10 @@ export function NovelView({
             size="lg"
             disabled={busy || !idea.trim()}
             onClick={() => onGenerateDrafts(idea.trim())}
+            className="shiny-btn"
           >
             <SparklesIcon />
-            {busy ? "Generating…" : "Generate draft"}
+            <span>{busy ? "Generating…" : "Generate draft"}</span>
           </Button>
         </CardFooter>
       </Card>
