@@ -112,6 +112,7 @@ import {
   type Episode,
 } from "@/lib/parse"
 import { GenerationModal, type GenerationKind } from "@/components/GenerationModal"
+import { GenerationBar } from "@/components/GenerationBar"
 import { NovelView } from "@/components/NovelView"
 import { BookView } from "@/components/BookView"
 import { HomeView, type HomeMode } from "@/components/HomeView"
@@ -2532,6 +2533,15 @@ function AppShell() {
   const [genKind, setGenKind] = useState<GenerationKind>("generate")
   const [genError, setGenError] = useState<string | null>(null)
   const [genSlow, setGenSlow] = useState(false)
+  // #79: the generation modal is the EXPANDED view of the player bar.
+  // While generating, the bar shows and the modal stays hidden until the
+  // user expands it; any error re-opens the modal (effect below).
+  const [genModalVisible, setGenModalVisible] = useState(false)
+  const genBarVisible = generating && genError === null && !genModalVisible
+
+  useEffect(() => {
+    if (genError !== null) setGenModalVisible(true)
+  }, [genError])
   const genController = useRef<AbortController | null>(null)
   const genRunId = useRef(0)
   const genSlowTimer = useRef<number | null>(null)
@@ -2576,6 +2586,7 @@ function AppShell() {
     setGenKind(kind)
     setGenError(null)
     setGenSlow(false)
+    setGenModalVisible(false)
     genController.current = new AbortController()
     genRunId.current += 1
     const myRun = genRunId.current
@@ -2591,6 +2602,7 @@ function AppShell() {
     setGenerating(false)
     setGenSlow(false)
     setGenError(null)
+    setGenModalVisible(false)
   }
 
   function retryGen() {
@@ -3605,6 +3617,7 @@ function AppShell() {
       onRandom={handleHomeRandom}
       onEnter={handleHomeEnter}
       busy={busy}
+      generationBarVisible={genBarVisible}
     />
   )
 
@@ -4201,10 +4214,18 @@ function AppShell() {
           </div>
           )}
         </main>
+        {/* Scroll room for the fixed player bar so the last content is
+            never hidden behind it. */}
+        {genBarVisible ? (
+          <div
+            aria-hidden="true"
+            className="h-[calc(4rem+env(safe-area-inset-bottom))]"
+          />
+        ) : null}
       </AnimatedSidebarInset>
 
       <GenerationModal
-        open={generating || genError !== null}
+        open={genModalVisible && (generating || genError !== null)}
         kind={genKind}
         phrase={LOADING_PHRASES[loadingPhrase]}
         slow={genSlow}
@@ -4212,7 +4233,18 @@ function AppShell() {
         onAbort={abortGen}
         onClose={() => setGenError(null)}
         onRetry={retryGen}
+        onHide={() => setGenModalVisible(false)}
       />
+
+      {genBarVisible ? (
+        <GenerationBar
+          kind={genKind}
+          phrase={LOADING_PHRASES[loadingPhrase]}
+          slow={genSlow}
+          onExpand={() => setGenModalVisible(true)}
+          onAbort={abortGen}
+        />
+      ) : null}
 
       <CenterMorphModal open={characterModalOpen} onOpenChange={setCharacterModalOpen}>
         <CenterMorphModalContent ariaLabel={editingCharacter ? "Character ပြင်မယ်" : "Character ထည့်မယ်"} ariaDescribedBy="character-desc" className="flex flex-col gap-4 p-6 text-sm bg-popover max-w-[calc(100%-2rem)] sm:max-w-xl">
