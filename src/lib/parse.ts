@@ -178,34 +178,51 @@ function stripFences(text: string): string {
   return out
 }
 
+/** Myanmar digits → ASCII ("၉" → "9"), for ages written in Burmese. */
+const MYANMAR_DIGIT_VALUES = "၀၁၂၃၄၅၆၇၈၉"
+function toAsciiDigits(text: string): string {
+  return text.replace(/[၀-၉]/g, (d) =>
+    String(MYANMAR_DIGIT_VALUES.indexOf(d)),
+  )
+}
+
 function parseCharacters(section: string): EpisodeCharacter[] {
   const header = /\[CHAR_(\d+)\]\s*([^\n(]+?)\s*\(([^)]+)\)/g
   const matches = [...section.matchAll(header)]
   return matches.map((match, index) => {
     const nextStart = matches[index + 1]?.index ?? section.length
     const headerEnd = (match.index ?? 0) + match[0].length
+    // The model bold-wraps bible text ("** — အသက်... **"); strip the
+    // markers first, or they corrupt the age/role extraction below.
     let description = section
       .slice(headerEnd, nextStart)
+      .replace(/\*\*/g, "")
       .replace(/^[\s:—–-]+/, "")
       .replace(/\s+/g, " ")
       .trim()
-    // Cut off any trailing section heading that leaked into the last entry.
-    description = description.split(/\n\s*#{1,6}\s/)[0].trim()
-    const ageMatch = description.match(/(\d+)\s*(?:နှစ်|years?\s*old)/)
-    const age = ageMatch ? parseInt(ageMatch[1], 10) : null
+    // Cut off any trailing section heading that leaked into the last entry —
+    // newline-prefixed ("### 4. ...") or glued to the last line ("...အသံ။### 4.").
+    description = description
+      .split(/\n\s*#{1,6}\s/)[0]
+      .split(/#{2,}/)[0]
+      .trim()
+    const ageMatch = description.match(/([\d၀-၉]+)\s*(?:နှစ်|years?\s*old)/)
+    const age = ageMatch ? parseInt(toAsciiDigits(ageMatch[1]), 10) : null
     let role = ""
     if (ageMatch && ageMatch.index !== undefined) {
       const afterAge = description
         .slice(ageMatch.index + ageMatch[0].length)
-        .replace(/^[\s,;—–-]+/, "")
+        // Strip the separator after the age — including the Myanmar comma
+        // "၊", or the role comes out empty (split's first element is "").
+        .replace(/^[\s,;၊။—–-]+/, "")
       role = cleanLine(afterAge.split(/[,၊.]/)[0]).slice(0, 60)
     } else {
       role = cleanLine(description.split(/[,၊.]/)[0]).slice(0, 60)
     }
     return {
       id: `CHAR_${match[1].padStart(3, "0")}`,
-      name: cleanLine(match[2]),
-      transliteration: cleanLine(match[3]),
+      name: cleanLine(match[2]).replace(/\*\*/g, ""),
+      transliteration: cleanLine(match[3]).replace(/\*\*/g, ""),
       age,
       role,
       description,
@@ -256,7 +273,7 @@ function parseBackgrounds(section: string): EpisodeBackground[] {
     const id = `BG_${entry[1].padStart(3, "0")}`
     if (seen.has(id)) continue
     seen.add(id)
-    out.push({ id, text: cleanLine(entry[2]) })
+    out.push({ id, text: cleanLine(entry[2]).replace(/\*\*/g, "") })
   }
   return out
 }
@@ -357,17 +374,24 @@ function parsePlan(
  * a leading dash ("— (00:16 - 00:24)"), which the old strip missed.
  */
 /**
- * Drop standalone bold-marker lines ("**") from the start/end of a chunk.
+ * A line holding nothing but symbols/emoji + asterisks ("**", "🎨 **",
+ * "🎬 **"). The model sometimes closes a prompt block with such a line
+ * after the closing fence, which then shields the fence from every
+ * trailing-strip rule. Such a line is never prompt content.
+ */
+function isMarkerLine(line: string): boolean {
+  return /^[^\p{L}\p{N}]*\*+[^\p{L}\p{N}]*$/u.test(line.trim())
+}
+
+/**
+ * Drop standalone marker lines from the start/end of a chunk.
  * The model sometimes wraps a whole prompt block in them:
- * "**\n```text\n...\n```\n**". A bare "**" line is never prompt content.
+ * "**\n```text\n...\n```\n**" or a trailing "🎨 **" after the fence.
  */
 function stripBoldMarkerLines(text: string): string {
   const lines = text.trim().split("\n")
-  while (lines.length > 0 && /^\*\*\s*$/.test(lines[0].trim())) lines.shift()
-  while (
-    lines.length > 0 &&
-    /^\*\*\s*$/.test(lines[lines.length - 1].trim())
-  )
+  while (lines.length > 0 && isMarkerLine(lines[0])) lines.shift()
+  while (lines.length > 0 && isMarkerLine(lines[lines.length - 1]))
     lines.pop()
   return lines.join("\n").trim()
 }
@@ -418,7 +442,7 @@ function stripTrailingJunk(text: string): string {
       lines.pop()
       continue
     }
-    if (/^\*\*\s*$/.test(line)) {
+    if (isMarkerLine(line)) {
       lines.pop()
       continue
     }
