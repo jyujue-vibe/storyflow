@@ -134,18 +134,12 @@ function episodeSections(episode: Episode, level: number): string {
     parts.push(section(`${h} Backgrounds`, body))
   }
 
-  const bgSheets = episode.backgroundSheets ?? []
-  if (bgSheets.length > 0) {
-    const body = bgSheets
-      .map((s) => `${hh} ${s.bgId}\n\n${text(s.text)}`)
-      .join("\n\n")
-    parts.push(section(`${h} Background Sheet Image Prompts`, body))
-  }
-
   const prompts = [...(episode.prompts ?? [])].sort((a, b) => a.number - b.number)
   const scenes = episode.scenes ?? []
-  // Background prompts live in their own section (grouped by BG, with the
-  // scenes each one serves); scene blocks carry image + video only.
+  // Background prompts live ONLY in the sheet section (grouped by BG, with
+  // the scenes each one serves); scene blocks carry image + video only.
+  // Episodes with no background prompts at all fall back to their old
+  // §4 sheet prompts, so nothing is lost.
   const bgPrompts =
     episode.backgroundPrompts ?? groupBackgroundPrompts(episode.prompts ?? [])
   if (bgPrompts.length > 0) {
@@ -157,7 +151,15 @@ function episodeSections(episode: Episode, level: number): string {
         return `${hh} ${head}${suffix}\n\n${text(b.text)}`
       })
       .join("\n\n")
-    parts.push(section(`${h} Background Prompts`, body))
+    parts.push(section(`${h} Background Sheet Prompts`, body))
+  } else {
+    const bgSheets = episode.backgroundSheets ?? []
+    if (bgSheets.length > 0) {
+      const body = bgSheets
+        .map((s) => `${hh} ${s.bgId}\n\n${text(s.text)}`)
+        .join("\n\n")
+      parts.push(section(`${h} Background Sheet Prompts`, body))
+    }
   }
   if (prompts.length > 0) {
     const body = prompts
