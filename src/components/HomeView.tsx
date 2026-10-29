@@ -158,7 +158,7 @@ export function HomeView({
         className="sticky bottom-4 z-10"
         style={
           generationBarVisible
-            ? { bottom: "calc(5rem + env(safe-area-inset-bottom))" }
+            ? { bottom: "calc(5.75rem + env(safe-area-inset-bottom))" }
             : undefined
         }
       >
