@@ -33,11 +33,11 @@ interface GenerationModalProps {
 }
 
 const KIND_TITLES: Record<GenerationKind, string> = {
-  generate: "Episode ရေးနေတယ်",
-  continue: "နောက်အပိုင်း ရေးနေတယ်",
-  rewrite: "Episode ပြန်ရေးနေတယ်",
-  novel: "ဝတ္ထု ရေးနေတယ်",
-  book: "စာအုပ် ရေးနေတယ်",
+  generate: "Episode ရေးနေပါတယ်",
+  continue: "နောက်အပိုင်း ရေးနေပါတယ်",
+  rewrite: "Episode ပြန်ရေးနေပါတယ်",
+  novel: "ဝတ္ထု ရေးနေပါတယ်",
+  book: "စာအုပ် ရေးနေပါတယ်",
 }
 
 /**
