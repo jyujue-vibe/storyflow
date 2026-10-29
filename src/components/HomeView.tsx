@@ -195,10 +195,10 @@ export function HomeView({
                 size="lg"
                 disabled={busy || !idea.trim()}
                 onClick={onEnter}
-                className="px-8"
+                className="px-8 shiny-btn"
               >
                 <SparklesIcon />
-                {busy ? "Generating…" : "Generate"}
+                <span>{busy ? "Generating…" : "Generate"}</span>
               </Button>
             </div>
           </CardContent>
