@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Lottie } from "lottie-react"
 import { useReducedMotion } from "motion/react"
-import { X } from "lucide-react"
+import { ChevronsDown, X } from "lucide-react"
 import {
   CenterMorphModal,
   CenterMorphModalContent,
@@ -30,9 +30,11 @@ interface GenerationModalProps {
   onAbort: () => void
   onClose: () => void
   onRetry: () => void
+  /** Hide back to the player bar (generation only — never in error state). */
+  onHide?: () => void
 }
 
-const KIND_TITLES: Record<GenerationKind, string> = {
+export const KIND_TITLES: Record<GenerationKind, string> = {
   generate: "Episode ရေးနေပါတယ်",
   continue: "နောက်အပိုင်း ရေးနေပါတယ်",
   rewrite: "Episode ပြန်ရေးနေပါတယ်",
@@ -43,8 +45,11 @@ const KIND_TITLES: Record<GenerationKind, string> = {
 /**
  * Locked modal shown while an episode generates. Escape and backdrop presses
  * are disabled (dismissible={false}); the only way out mid-generation is the
- * X, which asks for confirmation first. Nothing here closes the modal on its
- * own — AppShell owns open state (generating || error) and all outcomes.
+ * X, which asks for confirmation first. Since #79 the modal is just the
+ * expanded view of the player bar: AppShell shows the bar while generating
+ * and opens this modal only when the user expands it (or on error), and the
+ * hide button returns to the bar. Nothing here closes the modal on its
+ * own — AppShell owns open state and all outcomes.
  */
 export function GenerationModal({
   open,
@@ -55,6 +60,7 @@ export function GenerationModal({
   onAbort,
   onClose,
   onRetry,
+  onHide,
 }: GenerationModalProps) {
   const reduce = useReducedMotion() ?? false
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -78,6 +84,20 @@ export function GenerationModal({
                 "linear-gradient(to top, rgba(45,212,191,0.38) 0%, rgba(163,230,53,0.22) 45%, transparent 100%)",
             }}
           />
+
+          {/* Hide button (#79): back to the player bar, generation keeps
+              running. Generation only — in the error state there is no bar
+              to return to, so only the X shows. */}
+          {!error && onHide ? (
+            <button
+              type="button"
+              aria-label="Hide modal"
+              onClick={onHide}
+              className="absolute right-14 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground/[0.05] text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronsDown className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : null}
 
           {/* Custom X (mirrors the built-in close button's position/style).
               During generation it asks for confirmation; in the error state
