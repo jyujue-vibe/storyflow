@@ -1,4 +1,4 @@
-import type { Episode } from "./parse"
+import { groupBackgroundPrompts, type Episode } from "./parse"
 import type { Novel } from "./novelInstruction"
 import type { ChildBook } from "./childrenBookInstruction"
 
@@ -37,6 +37,35 @@ function mmss(seconds: number): string {
 
 function text(value: string | null | undefined): string {
   return (value ?? "").trim()
+}
+
+/** "Scene 03" for one scene, "Scenes 01–03, 05" for several. */
+function sceneList(scenes: number[]): string {
+  const sorted = [...new Set(scenes)].sort((a, b) => a - b)
+  if (sorted.length === 0) return ""
+  if (sorted.length === 1) {
+    return `Scene ${String(sorted[0]).padStart(2, "0")}`
+  }
+  const ranges: string[] = []
+  let start = sorted[0]
+  let prev = sorted[0]
+  const push = () => {
+    ranges.push(
+      start === prev
+        ? String(start).padStart(2, "0")
+        : `${String(start).padStart(2, "0")}–${String(prev).padStart(2, "0")}`,
+    )
+  }
+  for (const n of sorted.slice(1)) {
+    if (n === prev + 1) {
+      prev = n
+      continue
+    }
+    push()
+    start = prev = n
+  }
+  push()
+  return `Scenes ${ranges.join(", ")}`
 }
 
 /** One section: empty body renders nothing, so partial episodes stay clean. */
@@ -115,6 +144,21 @@ function episodeSections(episode: Episode, level: number): string {
 
   const prompts = [...(episode.prompts ?? [])].sort((a, b) => a.number - b.number)
   const scenes = episode.scenes ?? []
+  // Background prompts live in their own section (grouped by BG, with the
+  // scenes each one serves); scene blocks carry image + video only.
+  const bgPrompts =
+    episode.backgroundPrompts ?? groupBackgroundPrompts(episode.prompts ?? [])
+  if (bgPrompts.length > 0) {
+    const body = bgPrompts
+      .map((b) => {
+        const head = b.bgId ? `${b.bgId}${b.name ? ` — ${b.name}` : ""}` : b.name
+        const list = sceneList(b.scenes)
+        const suffix = list ? ` (${list})` : ""
+        return `${hh} ${head}${suffix}\n\n${text(b.text)}`
+      })
+      .join("\n\n")
+    parts.push(section(`${h} Background Prompts`, body))
+  }
   if (prompts.length > 0) {
     const body = prompts
       .map((p) => {
@@ -123,7 +167,6 @@ function episodeSections(episode: Episode, level: number): string {
         const blocks = [
           line,
           `**Image:** ${text(p.image)}`,
-          `**Background:** ${text(p.background)}`,
           `**Video:** ${text(p.video)}`,
         ]
           .filter(Boolean)
