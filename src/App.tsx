@@ -921,7 +921,7 @@ function SampleView({
               <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   size="lg"
-                  className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                  className="shiny-btn shiny-btn-blue text-white hover:brightness-110"
                   onClick={() =>
                     toast.info("Episode 2 continue is the next build step", {
                       description:
@@ -1391,7 +1391,7 @@ function EpisodeView({
                     size="lg"
                     disabled={busy}
                     onClick={() => onContinue(episode)}
-                    className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                    className="shiny-btn shiny-btn-blue text-white hover:brightness-110"
                   >
                     Continue → Episode{" "}
                     {String(episode.episodeNumber + 1).padStart(2, "0")}
@@ -3661,7 +3661,7 @@ function AppShell() {
                     goHome()
                   }}
                   icon={<PlusIcon className="size-4" />}
-                  className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                  className="shiny-btn shiny-btn-blue text-white hover:brightness-110"
                 >
                   <span>New story</span>
                 </AnimatedSidebarMenuButton>
@@ -4133,7 +4133,7 @@ function AppShell() {
                         size="lg"
                         disabled={busy}
                         onClick={() => handleContinue(activeEpisode)}
-                        className="bg-gradient-to-r from-[#2563eb] to-[#0c098c] text-white hover:brightness-110"
+                        className="shiny-btn shiny-btn-blue text-white hover:brightness-110"
                       >
                         Continue → Episode{" "}
                         {String(activeEpisode.episodeNumber + 1).padStart(2, "0")}
