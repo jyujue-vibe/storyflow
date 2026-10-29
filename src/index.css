@@ -363,7 +363,8 @@
   box-shadow: inset 0 0 0 1px var(--shiny-face-subtle);
   transition: var(--shiny-transition);
   transition-property:
-    --gradient-angle-offset, --gradient-percent, --gradient-shine;
+    --gradient-angle-offset, --gradient-percent, --gradient-shine,
+    box-shadow;
 }
 /* Dark face = the original's default theme. */
 .dark .shiny-btn {
@@ -374,13 +375,7 @@
   --shiny-highlight-subtle: #06b6d4;
 }
 .shiny-btn::before,
-.shiny-btn::after,
-/* #87: breathe glow ONLY on plain text spans. The sidebar MenuButton wraps
-   its label in extra spans (icon span.grid + label span.flex-1 covering the
-   full button width) — letting the glow size to those flooded the whole
-   button on hover. :not() keeps those wrappers glow-free while Generate's
-   plain text spans (and New story's inner text span) keep their glow. */
-.shiny-btn span:not(.flex-1):not(.grid)::before {
+.shiny-btn::after {
   content: "";
   pointer-events: none;
   position: absolute;
@@ -426,18 +421,14 @@
   mask-image: radial-gradient(circle at bottom, transparent 40%, black);
   opacity: 0.6;
 }
-.shiny-btn span {
-  z-index: 1;
-}
-/* Breathing glow, visible on hover/focus (animated only with motion). */
-.shiny-btn span:not(.flex-1):not(.grid)::before {
-  --size: calc(100% + 1rem);
-  width: var(--size);
-  height: var(--size);
-  box-shadow: inset 0 -1ex 2rem 4px var(--shiny-highlight);
-  opacity: 0;
-  transition: opacity var(--shiny-transition);
-}
+/* #92: NO span glow anymore. A span-sized glow can never look the same on
+   every button: its square follows the text length, so short labels
+   (New story, Generate) got a saturated solid block while long labels
+   (Continue) got a soft wash — that is why #91's text-sized glow still
+   looked wrong on New story and Generate but right on Continue. The hover
+   wash now lives on the button itself (see the hover rule below), so every
+   shiny button gets the identical whole-button soft wash regardless of its
+   label length or span structure. */
 @media (prefers-reduced-motion: no-preference) {
   .shiny-btn,
   .shiny-btn::before,
@@ -450,21 +441,21 @@
   .shiny-btn::after {
     animation-name: shiny-shimmer, shiny-gradient-angle;
   }
-  .shiny-btn span:not(.flex-1):not(.grid)::before {
-    animation: calc(var(--shiny-duration) * 1.5) shiny-breathe linear infinite;
-  }
   .shiny-btn:is(:hover, :focus-visible) {
     --gradient-percent: 20%;
     --gradient-angle-offset: 95deg;
     --gradient-shine: var(--shiny-highlight-subtle);
+    /* Whole-button soft wash: big-blur inset shadow, clipped to the
+       button's own rounded shape. Identical on every shiny button. */
+    box-shadow:
+      inset 0 0 0 1px var(--shiny-face-subtle),
+      inset 0 0 2.5rem 0.5rem
+        color-mix(in srgb, var(--shiny-highlight) 45%, transparent);
   }
   .shiny-btn:is(:hover, :focus-visible),
   .shiny-btn:is(:hover, :focus-visible)::before,
   .shiny-btn:is(:hover, :focus-visible)::after {
     animation-play-state: running;
-  }
-  .shiny-btn:is(:hover, :focus-visible) span:not(.flex-1):not(.grid)::before {
-    opacity: 1;
   }
 }
 @keyframes shiny-gradient-angle {
