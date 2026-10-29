@@ -106,7 +106,11 @@ import {
   type GoogleUser,
   type SyncFile,
 } from "@/lib/drive"
-import { parseEpisode, type Episode } from "@/lib/parse"
+import {
+  groupBackgroundPrompts,
+  parseEpisode,
+  type Episode,
+} from "@/lib/parse"
 import { GenerationModal, type GenerationKind } from "@/components/GenerationModal"
 import { NovelView } from "@/components/NovelView"
 import { BookView } from "@/components/BookView"
@@ -431,6 +435,9 @@ function normalizeEpisode(episode: Episode): Episode {
       ...prompt,
       background: prompt.background ?? "",
     })),
+    backgroundPrompts:
+      episode.backgroundPrompts ??
+      groupBackgroundPrompts(episode.prompts ?? []),
   }
 }
 
@@ -466,6 +473,35 @@ function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+}
+
+/** "Scene 03" for one scene, "Scenes 01–03, 05" for several. */
+function formatSceneList(scenes: number[]) {
+  const sorted = [...new Set(scenes)].sort((a, b) => a - b)
+  if (sorted.length === 0) return ""
+  if (sorted.length === 1) {
+    return `Scene ${String(sorted[0]).padStart(2, "0")}`
+  }
+  const ranges: string[] = []
+  let start = sorted[0]
+  let prev = sorted[0]
+  const push = () => {
+    ranges.push(
+      start === prev
+        ? String(start).padStart(2, "0")
+        : `${String(start).padStart(2, "0")}–${String(prev).padStart(2, "0")}`,
+    )
+  }
+  for (const n of sorted.slice(1)) {
+    if (n === prev + 1) {
+      prev = n
+      continue
+    }
+    push()
+    start = prev = n
+  }
+  push()
+  return `Scenes ${ranges.join(", ")}`
 }
 
 // Multi-mode loaders: novels, children books, and saved custom book
@@ -745,6 +781,36 @@ function SampleView({
             ),
           },
           {
+             id: "background-01",
+             title: (
+              <>
+              Background prompt — BG_001 Myanmar wooden kitchen · Scene 01
+              </>
+            ),
+             description: (
+              <>
+              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+              </pre>
+              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() =>
+                    onCopy(
+                      "16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                      "BACKGROUND PROMPT 01",
+                    )
+                  }
+                >
+                  <CopyIcon />
+                  Copy Background Prompt
+                </Button>
+              </div>
+              </>
+            ),
+          },
+          {
              id: "scene-01",
              title: (
               <>
@@ -759,10 +825,7 @@ function SampleView({
                 the video prompt on the same frame.
               </p>
               <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6 mt-4">
-                {`16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
-              </pre>
-              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6 mt-4">
-                {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+                {`16:9 landscape. Close-up. [@CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
               </pre>
               <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
@@ -770,7 +833,7 @@ function SampleView({
                   size="lg"
                   onClick={() =>
                     onCopy(
-                      "16:9 landscape. Close-up. [CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                      "16:9 landscape. Close-up. [@CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
                       "IMAGE PROMPT 01",
                     )
                   }
@@ -779,23 +842,10 @@ function SampleView({
                   Copy Image Prompt
                 </Button>
                 <Button
-                  variant="outline"
                   size="lg"
                   onClick={() =>
                     onCopy(
-                      "16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
-                      "BACKGROUND PROMPT 01",
-                    )
-                  }
-                >
-                  <CopyIcon />
-                  Copy Background Prompt
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={() =>
-                    onCopy(
-                      `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
+                      `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
                       "VIDEO PROMPT 01",
                     )
                   }
@@ -930,6 +980,11 @@ function EpisodeView({
     const name = found.text.split("—")[0]?.trim()
     return name ? name : bgId
   }
+  // Episodes stored before backgroundPrompts existed (localStorage, Drive)
+  // are grouped on the fly from their per-scene background texts.
+  const backgroundPrompts =
+    episode.backgroundPrompts ??
+    groupBackgroundPrompts(episode.prompts ?? [])
   return (
     <section className="flex flex-col gap-6">
             <BouncyAccordion
@@ -1153,17 +1208,50 @@ function EpisodeView({
               </>
             ),
           },
+          ...backgroundPrompts.map((bg) => ({
+            id: `background-${bg.bgId || bg.scenes.join("-")}`,
+            title: (
+              <>
+                <span>
+                  Background prompt —{" "}
+                  {bg.bgId ? `${bg.bgId} ${bg.name}` : bg.name}
+                  {bg.scenes.length > 0
+                    ? ` · ${formatSceneList(bg.scenes)}`
+                    : ""}
+                </span>
+              </>
+            ),
+            description: (
+              <>
+                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                  {bg.text}
+                </pre>
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() =>
+                      onCopy(
+                        bg.text,
+                        `BACKGROUND PROMPT ${bg.bgId || bg.name}`,
+                      )
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Background Prompt
+                  </Button>
+                </div>
+              </>
+            ),
+          })),
           ...episode.prompts.map((prompt) => ({
             id: `scene-${prompt.number}`,
             title: (
               <>
-                <span className="flex-1">
-                  Scene {String(prompt.number).padStart(2, "0")}
+                <span>
+                  Scene {String(prompt.number).padStart(2, "0")} (
+                  {formatTime(prompt.start)}–{formatTime(prompt.end)})
                 </span>
-                <span className="mr-2 shrink-0">
-                  {formatTime(prompt.start)}–{formatTime(prompt.end)}
-                </span>
-                
               </>
             ),
             description: (
@@ -1181,17 +1269,6 @@ function EpisodeView({
                       </span>
                       <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                         {prompt.image}
-                      </pre>
-                    </div>
-                  )}
-                  {prompt.background && (
-                    <div className="flex flex-col gap-4">
-                      <span className="text-sm font-medium">
-                        BACKGROUND PROMPT{" "}
-                        {String(prompt.number).padStart(2, "0")}
-                      </span>
-                      <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                        {prompt.background}
                       </pre>
                     </div>
                   )}
@@ -1220,21 +1297,6 @@ function EpisodeView({
                     >
                       <CopyIcon />
                       Copy Image Prompt
-                    </Button>
-                  )}
-                  {prompt.background && (
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() =>
-                        onCopy(
-                          prompt.background,
-                          `BACKGROUND PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                        )
-                      }
-                    >
-                      <CopyIcon />
-                      Copy Background Prompt
                     </Button>
                   )}
                   {prompt.video && (
