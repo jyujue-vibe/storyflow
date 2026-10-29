@@ -270,6 +270,14 @@ const DURATION_OPTIONS = [
   { value: 10, label: "10s" },
 ]
 
+const SCENE_COUNT_OPTIONS = [
+  { value: 4, label: "4 scenes" },
+  { value: 6, label: "6 scenes" },
+  { value: 8, label: "8 scenes" },
+  { value: 10, label: "10 scenes" },
+  { value: 12, label: "12 scenes" },
+]
+
 const RATIO_OPTIONS = [
   { value: "16:9", label: "16:9", full: "16:9 Landscape" },
   { value: "9:16", label: "9:16", full: "9:16 Portrait" },
@@ -786,28 +794,39 @@ function SampleView({
              id: "background-01",
              title: (
               <>
-              Background prompt — BG_001 Myanmar wooden kitchen · Scene 01
+              BACKGROUND SHEET PROMPT
               </>
             ),
              description: (
               <>
-              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
-              </pre>
-              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() =>
-                    onCopy(
-                      "16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
-                      "BACKGROUND PROMPT 01",
-                    )
-                  }
-                >
-                  <CopyIcon />
-                  Copy Background Prompt
-                </Button>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Background prompt for Scene 01 — paste into Flow to
+                generate the background, then use it for the scene.
+              </p>
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">
+                    BACKGROUND SHEET PROMPT — BG_001 Myanmar wooden kitchen
+                    · Scene 01
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="shrink-0"
+                    onClick={() =>
+                      onCopy(
+                        "16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                        "BACKGROUND PROMPT 01",
+                      )
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Background Prompt
+                  </Button>
+                </div>
+                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                  {`16:9 landscape. [BG_001] Myanmar wooden kitchen, wooden table, morning light through the window, warm atmosphere. High-quality cinematic 3D cartoon, sharp focus, detailed texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+                </pre>
               </div>
               </>
             ),
@@ -826,35 +845,50 @@ function SampleView({
                 Copy this into Google Flow to generate the still, then use
                 the video prompt on the same frame.
               </p>
-              <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6 mt-4">
-                {`16:9 landscape. Close-up. [@CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
-              </pre>
-              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() =>
-                    onCopy(
-                      "16:9 landscape. Close-up. [@CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
-                      "IMAGE PROMPT 01",
-                    )
-                  }
-                >
-                  <CopyIcon />
-                  Copy Image Prompt
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={() =>
-                    onCopy(
-                      `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
-                      "VIDEO PROMPT 01",
-                    )
-                  }
-                >
-                  <CopyIcon />
-                  Copy Video Prompt
-                </Button>
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">
+                    IMAGE PROMPT 01
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="shrink-0"
+                    onClick={() =>
+                      onCopy(
+                        "16:9 landscape. Close-up. [@CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.",
+                        "IMAGE PROMPT 01",
+                      )
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Image Prompt
+                  </Button>
+                </div>
+                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                  {`16:9 landscape. Close-up. [@CHAR_001] Daw Mya, 42, mother, light-green blouse, pouring oil onto a steaming rice bowl on a wooden table in a Myanmar wooden kitchen, warm morning light. High-quality cinematic 3D cartoon, sharp focus, detailed fabric texture, natural shadows, warm atmospheric lighting. No text, no logo, no watermark.`}
+                </pre>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">
+                    VIDEO PROMPT 01
+                  </span>
+                  <Button
+                    size="lg"
+                    className="shrink-0"
+                    onClick={() =>
+                      onCopy(
+                        `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
+                        "VIDEO PROMPT 01",
+                      )
+                    }
+                  >
+                    <CopyIcon />
+                    Copy Video Prompt
+                  </Button>
+                </div>
+                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                  {`16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`}
+                </pre>
               </div>
               
               </>
@@ -1017,7 +1051,13 @@ function EpisodeView({
                 )}
                 <Badge variant="secondary">{episode.aspect}</Badge>
                 <Badge variant="secondary">
-                  10 scenes × {episode.sceneDuration}s ={" "}
+                  {episode.scenes.length ||
+                    episode.prompts.length ||
+                    Math.round(
+                      episode.totalSeconds / episode.sceneDuration,
+                    ) ||
+                    10}{" "}
+                  scenes × {episode.sceneDuration}s ={" "}
                   {episode.totalSeconds}s
                 </Badge>
               </div>
@@ -1090,16 +1130,14 @@ function EpisodeView({
               <div className="mt-4 flex flex-col gap-4">
                 {episode.sheetPrompts.map((sheet) => (
                   <div key={sheet.charId} className="flex flex-col gap-4">
-                    <span className="text-sm font-medium">
-                      CHARACTER SHEET PROMPT — {sheet.charId}{" "}
-                      {charName(sheet.charId)}
-                    </span>
-                    <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                      {sheet.text}
-                    </pre>
-                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">
+                        CHARACTER SHEET PROMPT — {sheet.charId}{" "}
+                        {charName(sheet.charId)}
+                      </span>
                       <Button
                         size="lg"
+                        className="shrink-0"
                         onClick={() =>
                           onCopy(
                             sheet.text,
@@ -1111,6 +1149,9 @@ function EpisodeView({
                         Copy Character Sheet Prompt
                       </Button>
                     </div>
+                    <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                      {sheet.text}
+                    </pre>
                   </div>
                 ))}
               </div>
@@ -1129,37 +1170,71 @@ function EpisodeView({
              description: (
               <>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Paste these into Flow&apos;s image tool first to get the
-                background references — wide view + angles + detail — then
-                use them for the scene stills and background prompts. Each
-                sheet stays its own copyable prompt.
+                Background prompts for every scene — one per background,
+                with the scenes it covers. Paste one into Flow to generate
+                that background, then use it for its scenes.
               </p>
               <div className="mt-4 flex flex-col gap-4">
-                {episode.backgroundSheets.map((sheet) => (
-                  <div key={sheet.bgId} className="flex flex-col gap-4">
-                    <span className="text-sm font-medium">
-                      BACKGROUND SHEET PROMPT — {sheet.bgId}{" "}
-                      {bgName(sheet.bgId)}
-                    </span>
-                    <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                      {sheet.text}
-                    </pre>
-                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                      <Button
-                        size="lg"
-                        onClick={() =>
-                          onCopy(
-                            sheet.text,
-                            `BACKGROUND SHEET — ${sheet.bgId}`,
-                          )
-                        }
+                {backgroundPrompts.length > 0
+                  ? backgroundPrompts.map((bg) => (
+                      <div
+                        key={bg.bgId || bg.scenes.join("-")}
+                        className="flex flex-col gap-4"
                       >
-                        <CopyIcon />
-                        Copy Background Sheet Prompt
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">
+                            BACKGROUND SHEET PROMPT —{" "}
+                            {bg.bgId ? `${bg.bgId} ${bg.name}` : bg.name}
+                            {bg.scenes.length > 0
+                              ? ` · ${formatSceneList(bg.scenes)}`
+                              : ""}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="lg"
+                            className="shrink-0"
+                            onClick={() =>
+                              onCopy(
+                                bg.text,
+                                `BACKGROUND PROMPT ${bg.bgId || bg.name}`,
+                              )
+                            }
+                          >
+                            <CopyIcon />
+                            Copy Background Prompt
+                          </Button>
+                        </div>
+                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                          {bg.text}
+                        </pre>
+                      </div>
+                    ))
+                  : episode.backgroundSheets.map((sheet) => (
+                      <div key={sheet.bgId} className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">
+                            BACKGROUND SHEET PROMPT — {sheet.bgId}{" "}
+                            {bgName(sheet.bgId)}
+                          </span>
+                          <Button
+                            size="lg"
+                            className="shrink-0"
+                            onClick={() =>
+                              onCopy(
+                                sheet.text,
+                                `BACKGROUND SHEET — ${sheet.bgId}`,
+                              )
+                            }
+                          >
+                            <CopyIcon />
+                            Copy Background Sheet Prompt
+                          </Button>
+                        </div>
+                        <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
+                          {sheet.text}
+                        </pre>
+                      </div>
+                    ))}
               </div>
                 
               </>
@@ -1210,42 +1285,6 @@ function EpisodeView({
               </>
             ),
           },
-          ...backgroundPrompts.map((bg) => ({
-            id: `background-${bg.bgId || bg.scenes.join("-")}`,
-            title: (
-              <>
-                <span>
-                  Background prompt —{" "}
-                  {bg.bgId ? `${bg.bgId} ${bg.name}` : bg.name}
-                  {bg.scenes.length > 0
-                    ? ` · ${formatSceneList(bg.scenes)}`
-                    : ""}
-                </span>
-              </>
-            ),
-            description: (
-              <>
-                <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                  {bg.text}
-                </pre>
-                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() =>
-                      onCopy(
-                        bg.text,
-                        `BACKGROUND PROMPT ${bg.bgId || bg.name}`,
-                      )
-                    }
-                  >
-                    <CopyIcon />
-                    Copy Background Prompt
-                  </Button>
-                </div>
-              </>
-            ),
-          })),
           ...episode.prompts.map((prompt) => ({
             id: `scene-${prompt.number}`,
             title: (
@@ -1266,9 +1305,25 @@ function EpisodeView({
                 <div className="mt-4 flex flex-col gap-4">
                   {prompt.image && (
                     <div className="flex flex-col gap-4">
-                      <span className="text-sm font-medium">
-                        IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
-                      </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          IMAGE PROMPT {String(prompt.number).padStart(2, "0")}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="shrink-0"
+                          onClick={() =>
+                            onCopy(
+                              prompt.image,
+                              `IMAGE PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                            )
+                          }
+                        >
+                          <CopyIcon />
+                          Copy Image Prompt
+                        </Button>
+                      </div>
                       <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                         {prompt.image}
                       </pre>
@@ -1276,44 +1331,28 @@ function EpisodeView({
                   )}
                   {prompt.video && (
                     <div className="flex flex-col gap-4">
-                      <span className="text-sm font-medium">
-                        VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
-                      </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          VIDEO PROMPT {String(prompt.number).padStart(2, "0")}
+                        </span>
+                        <Button
+                          size="lg"
+                          className="shrink-0"
+                          onClick={() =>
+                            onCopy(
+                              prompt.video,
+                              `VIDEO PROMPT ${String(prompt.number).padStart(2, "0")}`,
+                            )
+                          }
+                        >
+                          <CopyIcon />
+                          Copy Video Prompt
+                        </Button>
+                      </div>
                       <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
                         {prompt.video}
                       </pre>
                     </div>
-                  )}
-                </div>
-                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  {prompt.image && (
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() =>
-                        onCopy(
-                          prompt.image,
-                          `IMAGE PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                        )
-                      }
-                    >
-                      <CopyIcon />
-                      Copy Image Prompt
-                    </Button>
-                  )}
-                  {prompt.video && (
-                    <Button
-                      size="lg"
-                      onClick={() =>
-                        onCopy(
-                          prompt.video,
-                          `VIDEO PROMPT ${String(prompt.number).padStart(2, "0")}`,
-                        )
-                      }
-                    >
-                      <CopyIcon />
-                      Copy Video Prompt
-                    </Button>
                   )}
                 </div>
                 
@@ -1452,7 +1491,7 @@ const GUIDE_STEPS = [
     titleEn: "Pick Genre, Visual Style, Scene duration and Ratio",
     titleMm: "Genre, Style, Duration, Ratio ရွေးပါ",
     bodyEn:
-      "Pick a Genre and a Visual Style from the chips, or choose Custom and type anything — custom text is sent to Gemini exactly as written. Pick a scene duration: 6, 8 or 10 seconds per scene. Pick an aspect ratio: 16:9 for YouTube, 9:16 for Shorts / Reels / TikTok, or 1:1 for a square post — and pick the same ratio in Flow. Every episode has 10 scenes.",
+      "Pick a Genre and a Visual Style from the chips, or choose Custom and type anything — custom text is sent to Gemini exactly as written. Pick how many scenes: 4, 6, 8, 10 or 12. Pick a scene duration: 6, 8 or 10 seconds per scene. Pick an aspect ratio: 16:9 for YouTube, 9:16 for Shorts / Reels / TikTok, or 1:1 for a square post — and pick the same ratio in Flow.",
     bodyMm:
       "Chip တွေထဲက Genre နဲ့ Visual Style ရွေးပါ၊ ဒါမှမဟုတ် Custom ရွေးပြီး ကြိုက်တာရိုက်ပါ — Custom စာသားကို Gemini ဆီ အတိုင်းအတာ ပို့ပေးတယ်။ Scene duration ကို 6s / 8s / 10s ရွေးပါ။ Ratio ကို ရွေးပါ — 16:9 = YouTube, 9:16 = Shorts / Reels / TikTok, 1:1 = square post အတွက်၊ Flow ထဲမှာလည်း ဒီ ratio အတိုင်း ရွေးပါ။ Episode တိုင်းမှာ scene 10 ခု ပါတယ်။",
   },
@@ -1606,7 +1645,8 @@ function AppShell() {
   const [backgroundDescription, setBackgroundDescription] = useState("")
   const [backgroundTimeWeather, setBackgroundTimeWeather] = useState("")
   const [sceneDuration, setSceneDuration] = useState(8)
-  const totalDuration = 10 * sceneDuration
+  const [sceneCount, setSceneCount] = useState(10)
+  const totalDuration = sceneCount * sceneDuration
   const [ratio, setRatio] = useState("16:9")
   const ratioFull =
     RATIO_OPTIONS.find((option) => option.value === ratio)?.full ??
@@ -2447,6 +2487,7 @@ function AppShell() {
     ratioLabel: string,
     characterLines?: string,
     backgroundLines?: string,
+    sceneCountValue?: number,
   ): string {
     const charactersBlock = characterLines
       ? `\nLocked characters — use these EXACTLY, same names, ages, looks, outfits and behaviour, as CHAR_001, CHAR_002... in this order. Only add new characters with the NEXT free CHAR IDs if the story needs them:\n${characterLines}`
@@ -2454,7 +2495,15 @@ function AppShell() {
     const backgroundsBlock = backgroundLines
       ? `\nLocked backgrounds — use these EXACTLY, same names, looks, details and time & weather, as BG_001, BG_002... in this order. Only add new backgrounds with the NEXT free BG IDs if the story needs them:\n${backgroundLines}`
       : ""
-    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.${charactersBlock}${backgroundsBlock}`
+    const count = sceneCountValue ?? 10
+    return `${ideaText}\nGenre: ${genreText}\nVisual Style: ${styleText}\nScene duration: ${duration} seconds per scene (${count} scenes, ${count * duration} seconds total).\nAspect ratio: ${ratioLabel}.${charactersBlock}${backgroundsBlock}`
+  }
+
+  /** Scenes an episode actually has — the count a Continue/Rewrite must keep. */
+  function episodeSceneCount(episode: Episode): number {
+    return (
+      episode.scenes.length || episode.prompts.length || 10
+    )
   }
 
   function buildContinuePrompt(
@@ -2473,7 +2522,8 @@ function AppShell() {
     const backgroundsBlock = backgroundLines
       ? `Backgrounds — reuse exactly, same BG IDs, names and descriptions:\n${backgroundLines}\n`
       : ""
-    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nGenre: ${episode.genre} — reuse this EXACTLY in Title & Details, do not reword.\nVisual Style: ${episode.visualStyle} — reuse this EXACTLY in Title & Details and in every image prompt, do not change.\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\n${backgroundsBlock}Previous episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (10 scenes, ${10 * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
+    const count = episodeSceneCount(episode)
+    return `ဆက်ပါ — Episode ${episode.episodeNumber + 1} ${duration}sec ဆက်ပေးပါ။\nGenre: ${episode.genre} — reuse this EXACTLY in Title & Details, do not reword.\nVisual Style: ${episode.visualStyle} — reuse this EXACTLY in Title & Details and in every image prompt, do not change.\nSeries memory (Story Record):\n- Story Title: ${record.title}\n- Central Premise: ${record.premise}\n- Main Conflict: ${record.conflict}\n- Key Turning Point: ${record.turningPoint}\n- Ending Type: ${record.endingType}\nCharacters — reuse exactly, same CHAR IDs, outfits and voices:\n${characterLines}\n${backgroundsBlock}Previous episode hook: ${episode.hook}\nScene duration: ${duration} seconds per scene (${count} scenes, ${count * duration} seconds total).\nAspect ratio: ${ratioLabel}.`
   }
 
   // Generation modal state: the modal is open while generating or while a
@@ -2492,6 +2542,7 @@ function AppShell() {
         duration: number
         aspectLabel: string
         threadId: string
+        sceneCount: number
       }
     | { kind: "rewrite"; episode: Episode; note: string }
     | { kind: "novel-drafts"; idea: string }
@@ -2566,6 +2617,7 @@ function AppShell() {
         last.duration,
         last.aspectLabel,
         last.threadId,
+        last.sceneCount,
       )
     }
   }
@@ -2586,6 +2638,7 @@ function AppShell() {
     duration: number,
     aspectLabel: string,
     threadId: string,
+    sceneCountValue?: number,
   ) {
     if (!activeKey) {
       setSettingsOpen(true)
@@ -2600,7 +2653,14 @@ function AppShell() {
       )
       return
     }
-    beginGen(kind, { kind, userPrompt, duration, aspectLabel, threadId })
+    beginGen(kind, {
+      kind,
+      userPrompt,
+      duration,
+      aspectLabel,
+      threadId,
+      sceneCount: sceneCountValue ?? 10,
+    })
     const myRun = genRunId.current
     setGenerating(true)
     setLoadingPhrase(0)
@@ -2614,6 +2674,7 @@ function AppShell() {
       const { episode, issues } = parseEpisode(text, {
         sceneDuration: duration,
         threadId,
+        sceneCount: sceneCountValue ?? 10,
       })
       if (!episode) {
         setRawFallback(text)
@@ -2678,10 +2739,12 @@ function AppShell() {
         ratioFull,
         characters.length > 0 ? buildCharacterLines(characters) : undefined,
         backgrounds.length > 0 ? buildBackgroundLines(backgrounds) : undefined,
+        sceneCount,
       ),
       sceneDuration,
       ratioFull,
       `thread-${Date.now()}`,
+      sceneCount,
     )
   }
 
@@ -2692,6 +2755,7 @@ function AppShell() {
       sceneDuration,
       ratioFull,
       episode.threadId,
+      episodeSceneCount(episode),
     )
   }
 
@@ -2730,8 +2794,9 @@ function AppShell() {
     if (note.trim()) {
       lines.push(`User's rewrite note: ${note.trim()}`)
     }
+    const rewriteCount = episodeSceneCount(episode)
     lines.push(
-      `Scene duration: ${episode.sceneDuration} seconds per scene (10 scenes, ${10 * episode.sceneDuration} seconds total).`,
+      `Scene duration: ${episode.sceneDuration} seconds per scene (${rewriteCount} scenes, ${rewriteCount * episode.sceneDuration} seconds total).`,
     )
     lines.push(`Aspect ratio: ${episode.aspect}.`)
     return lines.join("\n")
@@ -2766,6 +2831,7 @@ function AppShell() {
       const { episode: fresh, issues } = parseEpisode(text, {
         sceneDuration: episode.sceneDuration,
         threadId: episode.threadId,
+        sceneCount: episodeSceneCount(episode),
       })
       if (!fresh) {
         setGenSlow(false)
@@ -3242,6 +3308,25 @@ function AppShell() {
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">Scene count</span>
+                  <div className="flex flex-wrap gap-2">
+                    {SCENE_COUNT_OPTIONS.map((option) => (
+                      <Button
+                        key={option.value}
+                        variant={
+                          sceneCount === option.value ? "default" : "outline"
+                        }
+                        size="sm"
+                        className="rounded-full"
+                        aria-pressed={sceneCount === option.value}
+                        onClick={() => setSceneCount(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
                   <span className="text-sm font-medium">Scene duration</span>
                   <div className="flex flex-wrap gap-2">
                     {DURATION_OPTIONS.map((option) => (
@@ -3260,8 +3345,8 @@ function AppShell() {
                     ))}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    10 scenes × {sceneDuration}s = {totalDuration} seconds
-                    total.
+                    {sceneCount} scenes × {sceneDuration}s = {totalDuration}{" "}
+                    seconds total.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -3864,7 +3949,16 @@ function AppShell() {
             {(activeEpisode
               ? activeEpisode.aspect.split(" ")[0]
               : ratio)}{" "}
-            · 10 scenes ×{" "}
+            ·{" "}
+            {activeEpisode
+              ? (activeEpisode.scenes.length ||
+                activeEpisode.prompts.length ||
+                Math.round(
+                  activeEpisode.totalSeconds / activeEpisode.sceneDuration,
+                ) ||
+                10)
+              : sceneCount}{" "}
+            scenes ×{" "}
             {activeEpisode ? activeEpisode.sceneDuration : sceneDuration}s
           </Badge>
           )}
