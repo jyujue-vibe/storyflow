@@ -877,7 +877,7 @@ function SampleView({
                     className="shrink-0"
                     onClick={() =>
                       onCopy(
-                        `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`,
+                        `16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze; no music.`,
                         "VIDEO PROMPT 01",
                       )
                     }
@@ -887,7 +887,7 @@ function SampleView({
                   </Button>
                 </div>
                 <pre className="font-mono overflow-x-auto rounded-lg bg-muted p-5 text-sm leading-relaxed whitespace-pre-wrap sm:p-6">
-                  {`16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze.`}
+                  {`16:9 landscape. Continuous shot ${sceneDuration} seconds. Character [@CHAR_001] Daw Mya says in Burmese: "ကျော်ကျော်လေးအတွက် ထမင်းဆီဆမ်းလေး ပြင်ပေးမှာပါ။" One speaker only, gentle loving mother voice, natural pace, Burmese lip-sync, joyful expression. Background ambient sound of birds chirping and gentle breeze; no music.`}
                 </pre>
               </div>
               
