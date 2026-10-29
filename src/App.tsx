@@ -370,13 +370,15 @@ function loadGisScript(): Promise<GoogleAccounts> {
   return gisPromise
 }
 
-// The Gem's own generation status phrases, cycled while Generate runs.
+// Generation status phrases, cycled while Generate runs. Written for the
+// app's users in a polite, gentle tone (polite -ပါတယ် forms) — never
+// terse or system-jargon English.
 const LOADING_PHRASES = [
-  "Verifying the required output format…",
-  "Confirming scene specifications…",
-  "Completing the cartoon episode",
-  "Defining episode cliffhanger and setup",
-  "Verifying episode and character continuity",
+  "အရမ်းမိုက်တဲ့ ဇာတ်လမ်းရေးနေပါတယ်",
+  "Scene တစ်ခုချင်းစီကို သေချာစစ်နေပါတယ်",
+  "ကာတွန်းအပိုင်းလေး အပြီးသတ်နေပါတယ်",
+  "ဇာတ်သိမ်းနဲ့ နောက်အပိုင်းချိတ်ကို ပြင်နေပါတယ်",
+  "ဇာတ်လမ်းနဲ့ ဇာတ်ကောင်တွေ တစ်သမတ်တည်း ဖြစ်အောင် စစ်နေပါတယ်",
 ]
 
 function loadSavedKey(): string | null {
