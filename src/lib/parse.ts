@@ -356,19 +356,41 @@ function parsePlan(
  * timestamp-only line, and trailing junk. The timestamp line often carries
  * a leading dash ("— (00:16 - 00:24)"), which the old strip missed.
  */
+/**
+ * Drop standalone bold-marker lines ("**") from the start/end of a chunk.
+ * The model sometimes wraps a whole prompt block in them:
+ * "**\n```text\n...\n```\n**". A bare "**" line is never prompt content.
+ */
+function stripBoldMarkerLines(text: string): string {
+  const lines = text.trim().split("\n")
+  while (lines.length > 0 && /^\*\*\s*$/.test(lines[0].trim())) lines.shift()
+  while (
+    lines.length > 0 &&
+    /^\*\*\s*$/.test(lines[lines.length - 1].trim())
+  )
+    lines.pop()
+  return lines.join("\n").trim()
+}
+
 function cleanPromptChunk(rawChunk: string): string {
-  let text = stripFences(rawChunk)
-  text = text
-    .replace(
-      /^[–—-]?\s*\(?\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)?\s*[:：\-–—]?\s*\n?/,
-      "",
-    )
-    .trim()
-  // The timestamp strip above can EXPOSE a fence that was hiding behind
-  // the timestamp line (chunk starts "— (00:00 - 00:08)\n```text\n..."),
-  // so strip fences a second time — otherwise ```text survives into
-  // display, copy, and export.
-  text = stripFences(text)
+  let text = rawChunk
+  // Fences, the timestamp line, and bold-marker lines can hide behind
+  // each other in ANY order ("**" before a fence, a timestamp line before
+  // a fence, a fence before "**"), so strip in a loop until nothing
+  // changes — otherwise the hidden layer survives into display, copy,
+  // and export.
+  for (let i = 0; i < 4; i++) {
+    const prev = text
+    text = stripFences(text)
+    text = text
+      .replace(
+        /^[–—-]?\s*\(?\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)?\s*[:：\-–—]?\s*\n?/,
+        "",
+      )
+      .trim()
+    text = stripBoldMarkerLines(text)
+    if (text === prev) break
+  }
   return stripTrailingJunk(text)
 }
 
@@ -393,6 +415,10 @@ function stripTrailingJunk(text: string): string {
       continue
     }
     if (/^```\s*$/.test(line)) {
+      lines.pop()
+      continue
+    }
+    if (/^\*\*\s*$/.test(line)) {
       lines.pop()
       continue
     }
