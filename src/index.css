@@ -375,7 +375,12 @@
 }
 .shiny-btn::before,
 .shiny-btn::after,
-.shiny-btn span::before {
+/* #87: breathe glow ONLY on plain text spans. The sidebar MenuButton wraps
+   its label in extra spans (icon span.grid + label span.flex-1 covering the
+   full button width) — letting the glow size to those flooded the whole
+   button on hover. :not() keeps those wrappers glow-free while Generate's
+   plain text spans (and New story's inner text span) keep their glow. */
+.shiny-btn span:not(.flex-1):not(.grid)::before {
   content: "";
   pointer-events: none;
   position: absolute;
@@ -425,7 +430,7 @@
   z-index: 1;
 }
 /* Breathing glow, visible on hover/focus (animated only with motion). */
-.shiny-btn span::before {
+.shiny-btn span:not(.flex-1):not(.grid)::before {
   --size: calc(100% + 1rem);
   width: var(--size);
   height: var(--size);
@@ -445,7 +450,7 @@
   .shiny-btn::after {
     animation-name: shiny-shimmer, shiny-gradient-angle;
   }
-  .shiny-btn span::before {
+  .shiny-btn span:not(.flex-1):not(.grid)::before {
     animation: calc(var(--shiny-duration) * 1.5) shiny-breathe linear infinite;
   }
   .shiny-btn:is(:hover, :focus-visible) {
@@ -458,7 +463,7 @@
   .shiny-btn:is(:hover, :focus-visible)::after {
     animation-play-state: running;
   }
-  .shiny-btn:is(:hover, :focus-visible) span::before {
+  .shiny-btn:is(:hover, :focus-visible) span:not(.flex-1):not(.grid)::before {
     opacity: 1;
   }
 }
