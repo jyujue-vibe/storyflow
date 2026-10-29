@@ -95,6 +95,8 @@ export interface ParseOptions {
   threadId?: string
   sceneDuration?: number
   episodeNumber?: number
+  /** Scenes the user asked for (4/6/8/10/12, default 10) — validation target. */
+  sceneCount?: number
 }
 
 function mmssToSeconds(mmss: string): number {
@@ -301,7 +303,7 @@ function parsePlan(
     const match = line.match(/Scene\s+0?(\d{1,2})\b/i)
     if (!match) continue
     const number = parseInt(match[1], 10)
-    if (number < 1 || number > 10) continue
+    if (number < 1 || number > 12) continue
     const range = line.match(
       /(\d{1,2}:\d{2})\s*[–—-]\s*(\d{1,2}:\d{2})/,
     )
@@ -362,6 +364,11 @@ function cleanPromptChunk(rawChunk: string): string {
       "",
     )
     .trim()
+  // The timestamp strip above can EXPOSE a fence that was hiding behind
+  // the timestamp line (chunk starts "— (00:00 - 00:08)\n```text\n..."),
+  // so strip fences a second time — otherwise ```text survives into
+  // display, copy, and export.
+  text = stripFences(text)
   return stripTrailingJunk(text)
 }
 
@@ -382,6 +389,10 @@ function stripTrailingJunk(text: string): string {
       continue
     }
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
+      lines.pop()
+      continue
+    }
+    if (/^```\s*$/.test(line)) {
       lines.pop()
       continue
     }
@@ -423,7 +434,7 @@ function parsePrompts(section: string, duration: number): ScenePrompt[] {
   >()
   matches.forEach((match, index) => {
     const number = parseInt(match[2], 10)
-    if (number < 1 || number > 10) return
+    if (number < 1 || number > 12) return
     const chunkStart = (match.index ?? 0) + match[0].length
     const chunkEnd = matches[index + 1]?.index ?? section.length
     const rawChunk = section.slice(chunkStart, chunkEnd)
@@ -459,7 +470,7 @@ function parsePrompts(section: string, duration: number): ScenePrompt[] {
     })
 }
 
-/** Parse a "01–10", "03, 05" style scene list into sorted scene numbers. */
+/** Parse a "01–12", "03, 05" style scene list into sorted scene numbers. */
 function parseSceneList(raw: string): number[] {
   const out = new Set<number>()
   for (const part of raw.split(",")) {
@@ -468,13 +479,13 @@ function parseSceneList(raw: string): number[] {
     const range = token.match(/(\d{1,2})\s*[–—-]\s*(\d{1,2})/)
     if (range) {
       const start = Math.max(1, parseInt(range[1], 10))
-      const end = Math.min(10, parseInt(range[2], 10))
+      const end = Math.min(12, parseInt(range[2], 10))
       for (let n = start; n <= end; n++) out.add(n)
     } else {
       const single = token.match(/(\d{1,2})/)
       if (single) {
         const n = parseInt(single[1], 10)
-        if (n >= 1 && n <= 10) out.add(n)
+        if (n >= 1 && n <= 12) out.add(n)
       }
     }
   }
@@ -636,9 +647,13 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
     : perSceneMatch
       ? parseInt(perSceneMatch[1], 10)
       : (opts.sceneDuration ?? 8)
+  // Scenes the user asked for: the caller's count wins, then the title's
+  // own "N Scenes ×" line, then the old default 10.
+  const expectedScenes =
+    opts.sceneCount ?? (totalMatch ? parseInt(totalMatch[1], 10) : 10)
   const totalSeconds = totalMatch
     ? parseInt(totalMatch[3], 10)
-    : 10 * sceneDuration
+    : expectedScenes * sceneDuration
 
   // §2 — Story Summary
   const storySummary = stripHeadingLines(summarySection, [/Story Summary/i])
@@ -699,8 +714,10 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
 
   // Validation — collect, never throw.
   if (!title) issues.push("Episode title မတွေ့ဘူး။")
-  if (scenes.length < 10) {
-    issues.push(`Continuity plan မှာ scene ${scenes.length} ခုပဲ တွေ့တယ် (10 ခု လိုတယ်)။`)
+  if (scenes.length < expectedScenes) {
+    issues.push(`Continuity plan မှာ scene ${scenes.length} ခုပဲ တွေ့တယ် (${expectedScenes} ခု လိုတယ်)။`)
+  } else if (scenes.length > expectedScenes) {
+    issues.push(`Continuity plan မှာ scene ${scenes.length} ခု တွေ့တယ် (${expectedScenes} ခု တောင်းထားတယ်)။`)
   }
   const imageCount = prompts.filter((p) => p.image).length
   const videoCount = prompts.filter((p) => p.video).length
@@ -709,9 +726,13 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
       `Prompt အရေအတွက် မညီဘူး — image ${imageCount} ခု၊ video ${videoCount} ခု။`,
     )
   }
-  if (imageCount < 10 || videoCount < 10) {
+  if (imageCount < expectedScenes || videoCount < expectedScenes) {
     issues.push(
-      `Scene prompt ${Math.min(imageCount, videoCount)} စုံပဲ တွေ့တယ် (10 စုံ လိုတယ်)။`,
+      `Scene prompt ${Math.min(imageCount, videoCount)} စုံပဲ တွေ့တယ် (${expectedScenes} စုံ လိုတယ်)။`,
+    )
+  } else if (imageCount > expectedScenes || videoCount > expectedScenes) {
+    issues.push(
+      `Scene prompt ${Math.max(imageCount, videoCount)} စုံ တွေ့တယ် (${expectedScenes} စုံ တောင်းထားတယ်)။`,
     )
   }
   if (characters.length > 0 && sheetPrompts.length !== characters.length) {
@@ -726,10 +747,10 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
   if (
     bgBlocks.length === 0 &&
     backgroundCount > 0 &&
-    backgroundCount < 10
+    backgroundCount < expectedScenes
   ) {
     issues.push(
-      `Background prompt ${backgroundCount} ခုပဲ တွေ့တယ် (10 ခု လိုတယ်)။`,
+      `Background prompt ${backgroundCount} ခုပဲ တွေ့တယ် (${expectedScenes} ခု လိုတယ်)။`,
     )
   }
   if (
@@ -741,7 +762,7 @@ export function parseEpisode(raw: string, opts: ParseOptions = {}): ParseResult 
       `Background sheet ${backgroundSheets.length} ခု တွေ့တယ်၊ Background Map မှာ ${backgrounds.length} ခု ရှိတယ်။`,
     )
   }
-  if (scenes.some((s) => s.end > 10 * sceneDuration)) {
+  if (scenes.some((s) => s.end > totalSeconds)) {
     issues.push("Scene timestamp တစ်ခုက episode total ထက် ကျော်နေတယ်။")
   }
   const missingRecord = (
