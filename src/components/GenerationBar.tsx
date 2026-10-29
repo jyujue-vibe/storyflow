@@ -56,7 +56,7 @@ export function GenerationBar({
             onExpand()
           }
         }}
-        className="fixed inset-x-3 bottom-3 z-50 cursor-pointer rounded-2xl border bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.25)] backdrop-blur-md"
+        className="fixed inset-x-3 bottom-3 z-50 cursor-pointer overflow-hidden rounded-2xl border bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.25)] backdrop-blur-md"
       >
         {/* Flowing gradient wash (modal floor-fade colors) + indeterminate
             top line — both pure CSS, still under reduced-motion. */}
