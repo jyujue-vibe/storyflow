@@ -450,6 +450,12 @@ function stripTrailingJunk(text: string): string {
       lines.pop()
       continue
     }
+    // Bare numbered-heading fragment left when the next section's anchor
+    // matches mid-heading (e.g. "## 7." before "Continuity Note").
+    if (/^#{1,6}\s*\d+\.?\s*$/.test(line)) {
+      lines.pop()
+      continue
+    }
     if (
       /^Scene\s+0?\d{1,2}\s*\(\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)\s*$/.test(
         line,
@@ -636,26 +642,85 @@ export function groupBackgroundPrompts(
     .sort((a, b) => (a.scenes[0] ?? 99) - (b.scenes[0] ?? 99))
 }
 
+const NOTE_LABEL_PREFIX =
+  /^\s*\*{0,2}\s*Continuity Note\s*:?\*{0,2}\s*[-–—]?\s*/i
+const HOOK_LABEL_PREFIX =
+  /^\s*\*{0,2}\s*Next Episode Hook(\s*\(Episode\s*\d+\))?\s*:?\*{0,2}\s*[-–—]?\s*/i
+const RULE_ONLY_LINE = /^\s*(-{3,}|\*{3,}|_{3,})\s*$/
+
+/**
+ * Clean note/hook lines: strip ** (same trade-off as the bible fix),
+ * drop section-heading lines and label-only lines, keep the text that
+ * follows a label on the same line, and trim trailing rule/heading
+ * junk (the "--- ### 8." tail left when the Story Record anchor
+ * matches at "Story" instead of at the heading start).
+ */
+function cleanNoteHookLines(lines: string[]): string {
+  const cleaned: string[] = []
+  for (const raw of lines) {
+    let line = raw.replace(/\*\*/g, "").trim()
+    if (!line) continue
+    if (/^#{1,6}(\s|$)/.test(line)) continue
+    // Section-heading remainder: the §7 anchor starts mid-heading, so
+    // the first line is "Continuity Note & Next Episode Hook".
+    if (/^Continuity Note\s*&\s*Next Episode Hook/i.test(line)) continue
+    if (NOTE_LABEL_PREFIX.test(line)) {
+      line = line.replace(NOTE_LABEL_PREFIX, "").trim()
+      if (!line) continue
+    }
+    if (HOOK_LABEL_PREFIX.test(line)) {
+      line = line.replace(HOOK_LABEL_PREFIX, "").trim()
+      if (!line) continue
+    }
+    if (/ဆက်ရေးရန်/i.test(line)) continue
+    cleaned.push(line)
+  }
+  let out = cleaned.join("\n").trim()
+  // Glued tail: prose + "--- ### 8." on one line, or on following lines.
+  out = out.replace(/\s*-{3,}\s*#{1,6}.*$/s, "")
+  out = out.replace(/\s*#{2,}\s*\d+\.?\s*$/, "")
+  const tail = out.split("\n")
+  while (
+    tail.length &&
+    (isMarkerLine(tail[tail.length - 1]) ||
+      RULE_ONLY_LINE.test(tail[tail.length - 1]))
+  ) {
+    tail.pop()
+  }
+  return tail.join("\n").trim()
+}
+
 function splitNoteAndHook(section: string): {
   note: string
   hook: string
 } {
   const lines = section.split("\n")
-  const hookIndex = lines.findIndex((line) => /Next Episode Hook/i.test(line))
+  // The section heading itself ("## 7. Continuity Note & Next Episode
+  // Hook") contains "Next Episode Hook", so the old first-match split
+  // emptied the note and stuffed everything into the hook. Use the LAST
+  // label-style line (a line that STARTS with the hook label) instead.
+  const labelIndices: number[] = []
+  lines.forEach((line, i) => {
+    const stripped = line.replace(/\*\*/g, "").trim()
+    if (/^Next Episode Hook/i.test(stripped)) labelIndices.push(i)
+  })
+  let hookIndex =
+    labelIndices.length > 0 ? labelIndices[labelIndices.length - 1] : -1
   if (hookIndex === -1) {
-    return {
-      note: stripHeadingLines(section, [/Continuity Note/i]),
-      hook: "",
-    }
+    // Fallback: first non-heading line merely containing the phrase.
+    hookIndex = lines.findIndex(
+      (line) =>
+        !/^#{1,6}\s/.test(line.trim()) && /Next Episode Hook/i.test(line),
+    )
   }
-  const note = stripHeadingLines(lines.slice(0, hookIndex).join("\n"), [
-    /Continuity Note/i,
-  ])
-  const hook = lines
-    .slice(hookIndex + 1)
-    .filter((line) => line.trim() && !/ဆက်ရေးရန်/i.test(line))
-    .join("\n")
-    .trim()
+  if (hookIndex === -1) {
+    return { note: cleanNoteHookLines(lines), hook: "" }
+  }
+  const note = cleanNoteHookLines(lines.slice(0, hookIndex))
+  const hookFirst = lines[hookIndex]
+    .replace(/\*\*/g, "")
+    .replace(HOOK_LABEL_PREFIX, "")
+  const hook = cleanNoteHookLines([hookFirst, ...lines.slice(hookIndex + 1)])
   return { note, hook }
 }
 
