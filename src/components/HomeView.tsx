@@ -33,6 +33,8 @@ interface HomeViewProps {
   onRandom: () => void
   onEnter: () => void
   busy: boolean
+  /** #79: while the player bar shows, the composer lifts above it. */
+  generationBarVisible?: boolean
 }
 
 const MODE_CARDS: {
@@ -93,6 +95,7 @@ export function HomeView({
   onRandom,
   onEnter,
   busy,
+  generationBarVisible = false,
 }: HomeViewProps) {
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -151,7 +154,14 @@ export function HomeView({
 
       <div className="flex min-w-0 flex-col gap-6">{middle}</div>
 
-      <div className="sticky bottom-4 z-10">
+      <div
+        className="sticky bottom-4 z-10"
+        style={
+          generationBarVisible
+            ? { bottom: "calc(5rem + env(safe-area-inset-bottom))" }
+            : undefined
+        }
+      >
         <Card className="bg-card/85 shadow-lg backdrop-blur-md [--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]">
           <CardContent className="flex flex-col gap-3">
             <Textarea
