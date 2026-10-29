@@ -765,9 +765,10 @@ export function BookView({
                 onClick={() =>
                   onGenerateFixedBook(pickedFixed.id, topic.trim())
                 }
+                className="shiny-btn"
               >
                 <SparklesIcon />
-                {busy ? "Generating…" : "Generate book"}
+                <span>{busy ? "Generating…" : "Generate book"}</span>
               </Button>
             )}
             {pickedCustom && (
@@ -775,9 +776,10 @@ export function BookView({
                 size="lg"
                 disabled={busy || !outline.trim()}
                 onClick={() => onGenerateCustomBook(pickedCustom, outline.trim())}
+                className="shiny-btn"
               >
                 <SparklesIcon />
-                {busy ? "Generating…" : "Generate book"}
+                <span>{busy ? "Generating…" : "Generate book"}</span>
               </Button>
             )}
           </CardFooter>
