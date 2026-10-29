@@ -4804,7 +4804,7 @@ export default function App() {
         allowNestedScroll: true,
       }}
     >
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
         <TooltipProvider delay={0}>
           <AppShell />
         </TooltipProvider>
