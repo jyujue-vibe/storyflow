@@ -263,6 +263,38 @@
   background: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
 }
 
+/* Generation player bar (#79): flowing gradient wash + indeterminate top
+   line, same teal/lime floor-fade language as the generation modal.
+   Animations run only when the user allows motion; otherwise static. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes genbar-gradient-pan {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  @keyframes genbar-line-slide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(250%);
+    }
+  }
+  .genbar-gradient {
+    background-size: 200% 200%;
+    animation: genbar-gradient-pan 7s ease-in-out infinite;
+  }
+  .genbar-line {
+    animation: genbar-line-slide 1.8s ease-in-out infinite;
+  }
+}
+
 /* Generation modal backdrop drift (gradient-floor-style, pure CSS). */
 @keyframes gen-drift {
   from {
