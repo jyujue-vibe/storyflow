@@ -25,12 +25,13 @@ interface GenerationBarProps {
 }
 
 /**
- * Music-player-style generation bar (#79): full-width, fixed to the
- * viewport bottom, shown while a generation runs and the modal is
- * hidden. Same Sparkle Lottie + floor-fade gradient language as the
- * generation modal. Clicking the bar (or the expand button) re-opens
- * the modal; X asks for confirmation, exactly like the modal's X.
- * Toasts (z-[90]) stay above this bar (z-50).
+ * Music-player-style generation bar (#79, #80): a floating rounded box
+ * fixed to the viewport bottom, shown ONLY after the user hides the
+ * generation modal (the modal shows first on every generation). Same
+ * Sparkle Lottie + floor-fade gradient language as the modal. Clicking
+ * the bar (or the expand button) re-opens the modal; X asks for
+ * confirmation, exactly like the modal's X. Toasts (z-[90]) stay above
+ * this bar (z-50).
  */
 export function GenerationBar({
   kind,
@@ -55,7 +56,7 @@ export function GenerationBar({
             onExpand()
           }
         }}
-        className="fixed inset-x-0 bottom-0 z-50 cursor-pointer border-t bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.25)] backdrop-blur-md"
+        className="fixed inset-x-3 bottom-3 z-50 cursor-pointer rounded-2xl border bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.25)] backdrop-blur-md"
       >
         {/* Flowing gradient wash (modal floor-fade colors) + indeterminate
             top line — both pure CSS, still under reduced-motion. */}
