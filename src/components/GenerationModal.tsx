@@ -85,15 +85,16 @@ export function GenerationModal({
             }}
           />
 
-          {/* Hide button (#79): back to the player bar, generation keeps
-              running. Generation only — in the error state there is no bar
-              to return to, so only the X shows. */}
+          {/* Hide + X buttons MUST sit above the content wrapper below
+              (relative z-10): without z-20 the wrapper's box covers them
+              and eats real taps — synthetic .click() bypasses hit-testing,
+              which is how this shipped broken in #79/#80. */}
           {!error && onHide ? (
             <button
               type="button"
               aria-label="Hide modal"
               onClick={onHide}
-              className="absolute right-14 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground/[0.05] text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute right-14 top-4 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground/[0.05] text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ChevronsDown className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -109,7 +110,7 @@ export function GenerationModal({
               if (error) onClose()
               else setConfirmOpen(true)
             }}
-            className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground/[0.05] text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-4 top-4 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground/[0.05] text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
