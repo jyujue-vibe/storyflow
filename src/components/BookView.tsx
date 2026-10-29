@@ -91,7 +91,13 @@ interface BookViewProps {
 
 /** Copy-to-clipboard button with a brief "Copied" state. Falls back to a
  * hidden textarea + execCommand when the Clipboard API is unavailable. */
-function CopyButton({ text }: { text: string }) {
+function CopyButton({
+  text,
+  label = "Copy story content",
+}: {
+  text: string
+  label?: string
+}) {
   const [copied, setCopied] = useState(false)
   async function copy() {
     if (!text) return
@@ -118,7 +124,7 @@ function CopyButton({ text }: { text: string }) {
     window.setTimeout(() => setCopied(false), 2000)
   }
   return (
-    <Button variant="ghost" size="sm" onClick={copy} aria-label="Copy story content">
+    <Button variant="ghost" size="sm" onClick={copy} aria-label={label}>
       {copied ? <CheckIcon /> : <CopyIcon />}
       {copied ? "Copied" : "Copy"}
     </Button>
@@ -419,6 +425,8 @@ export function BookView({
             <CardContent className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Story Content</span>
+                {/* #83: each language's text lives in its own bordered box,
+                    so the two columns read as two distinct blocks. */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between gap-2">
@@ -427,9 +435,11 @@ export function BookView({
                       </span>
                       <CopyButton text={page.storyMyanmar} />
                     </div>
-                    <p className="text-sm leading-relaxed sm:text-base">
-                      {page.storyMyanmar || "—"}
-                    </p>
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                      <p className="text-sm leading-relaxed sm:text-base">
+                        {page.storyMyanmar || "—"}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between gap-2">
@@ -438,23 +448,47 @@ export function BookView({
                       </span>
                       <CopyButton text={page.story} />
                     </div>
-                    <p className="text-sm leading-relaxed sm:text-base">
-                      {page.story || "—"}
-                    </p>
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                      <p className="text-sm leading-relaxed sm:text-base">
+                        {page.story || "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium">Learning Focus</span>
-                <p className="text-sm leading-relaxed">
-                  {page.learningFocus}
-                </p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium">Illustration Ideas</span>
-                <p className="text-sm leading-relaxed">
-                  {page.illustrationIdeas}
-                </p>
+              {/* #83: Learning Focus + Illustration Ideas side by side,
+                  each in its own box with its own Copy button. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">Learning Focus</span>
+                    <CopyButton
+                      text={page.learningFocus}
+                      label="Copy learning focus"
+                    />
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                    <p className="text-sm leading-relaxed">
+                      {page.learningFocus || "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">
+                      Illustration Ideas
+                    </span>
+                    <CopyButton
+                      text={page.illustrationIdeas}
+                      label="Copy illustration ideas"
+                    />
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                    <p className="text-sm leading-relaxed">
+                      {page.illustrationIdeas || "—"}
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
